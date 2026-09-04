@@ -20,6 +20,44 @@ $workers = $pdo->query("SELECT id,name,trade,default_daily_rate FROM app_workers
 $categories = $pdo->query("SELECT id,name FROM app_categories ORDER BY name")->fetchAll();
 $all_projects = $pdo->query("SELECT id,name FROM app_projects WHERE is_deleted=0 ORDER BY name")->fetchAll();
 
+// Pre-calculate initial stats directly in PHP for instant 0ms render
+$stmtSumPurch = $pdo->prepare("SELECT COALESCE(SUM(total),0) FROM app_supply_purchases WHERE project_id=? AND is_deleted=0");
+$stmtSumPurch->execute([$project_id]);
+$init_purchases = (float)$stmtSumPurch->fetchColumn();
+
+$stmtSumCont = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM app_contractor_advances WHERE project_id=? AND is_deleted=0");
+$stmtSumCont->execute([$project_id]);
+$init_cont_paid = (float)$stmtSumCont->fetchColumn();
+
+$stmtSumLabor = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM app_worker_payments WHERE project_id=? AND is_deleted=0");
+$stmtSumLabor->execute([$project_id]);
+$init_labor_paid = (float)$stmtSumLabor->fetchColumn();
+
+$stmtSumClient = $pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM app_client_payments WHERE project_id=? AND is_deleted=0");
+$stmtSumClient->execute([$project_id]);
+$init_client_paid = (float)$stmtSumClient->fetchColumn();
+
+$stmtSumBill = $pdo->prepare("SELECT COALESCE(SUM(grand_total),0) FROM app_contractor_bills WHERE project_id=? AND is_deleted=0");
+$stmtSumBill->execute([$project_id]);
+$init_cont_billed = (float)$stmtSumBill->fetchColumn();
+
+$init_budget = (float)($project['estimated_budget'] ?? 0);
+$init_total_expense = $init_purchases + $init_cont_paid + $init_labor_paid;
+$init_client_due = $init_budget - $init_client_paid;
+$init_total_payment = $init_cont_paid + $init_labor_paid;
+$init_days_running = '-';
+if (!empty($project['start_date'])) {
+    $diff = time() - strtotime($project['start_date']);
+    if ($diff >= 0) {
+        $init_days_running = floor($diff / 86400) . ' days';
+    }
+}
+
+// Fetch initial purchases for instant table display
+$stmtPurch = $pdo->prepare("SELECT * FROM app_supply_purchases WHERE project_id=? AND is_deleted=0 ORDER BY purchase_date DESC, id DESC");
+$stmtPurch->execute([$project_id]);
+$initialPurchases = $stmtPurch->fetchAll(PDO::FETCH_ASSOC);
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
@@ -67,42 +105,42 @@ include __DIR__ . '/../includes/header.php';
   <div class="project-header-stats">
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#FEE2E2;color:#DC2626;"><i class="fa-solid fa-wallet"></i></div>
-      <div class="stat-val" style="color:var(--primary);" id="hdrBudget">-</div>
+      <div class="stat-val" style="color:var(--primary);" id="hdrBudget"><?= 'Tk. ' . number_format($init_budget, 0, '.', ',') ?></div>
       <div class="stat-lbl">Budget</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#FFEDD5;color:#EA580C;"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-      <div class="stat-val" style="color:var(--danger);" id="hdrExpense">-</div>
+      <div class="stat-val" style="color:var(--danger);" id="hdrExpense"><?= 'Tk. ' . number_format($init_total_expense, 0, '.', ',') ?></div>
       <div class="stat-lbl">Total Expense</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#DCFCE7;color:#16A34A;"><i class="fa-solid fa-money-bill-wave"></i></div>
-      <div class="stat-val" style="color:var(--success);" id="hdrReceived">-</div>
+      <div class="stat-val" style="color:var(--success);" id="hdrReceived"><?= 'Tk. ' . number_format($init_client_paid, 0, '.', ',') ?></div>
       <div class="stat-lbl">Client Paid</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#FEF9C3;color:#CA8A04;"><i class="fa-solid fa-coins"></i></div>
-      <div class="stat-val" style="color:var(--warning);" id="hdrDue">-</div>
+      <div class="stat-val" style="color:var(--warning);" id="hdrDue"><?= 'Tk. ' . number_format($init_client_due, 0, '.', ',') ?></div>
       <div class="stat-lbl">Client Due</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#DBEAFE;color:#2563EB;"><i class="fa-solid fa-calendar-days"></i></div>
-      <div class="stat-val" style="color:var(--info);" id="hdrDays">-</div>
+      <div class="stat-val" style="color:var(--info);" id="hdrDays"><?= htmlspecialchars($init_days_running) ?></div>
       <div class="stat-lbl">Days Running</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#F3E8FF;color:#9333EA;"><i class="fa-solid fa-cart-shopping"></i></div>
-      <div class="stat-val" style="color:var(--primary);" id="hdrPurchase">-</div>
+      <div class="stat-val" style="color:var(--primary);" id="hdrPurchase"><?= 'Tk. ' . number_format($init_purchases, 0, '.', ',') ?></div>
       <div class="stat-lbl">Total Purchase</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#E0E7FF;color:#4F46E5;"><i class="fa-solid fa-file-lines"></i></div>
-      <div class="stat-val" style="color:var(--warning);" id="hdrBilling">-</div>
+      <div class="stat-val" style="color:var(--warning);" id="hdrBilling"><?= 'Tk. ' . number_format($init_cont_billed, 0, '.', ',') ?></div>
       <div class="stat-lbl">Total Billing</div>
     </div>
     <div class="stat-card-item">
       <div class="stat-icon-wrap" style="background:#D1FAE5;color:#059669;"><i class="fa-solid fa-circle-check"></i></div>
-      <div class="stat-val" style="color:var(--success);" id="hdrPayment">-</div>
+      <div class="stat-val" style="color:var(--success);" id="hdrPayment"><?= 'Tk. ' . number_format($init_total_payment, 0, '.', ',') ?></div>
       <div class="stat-lbl">Total Payment</div>
     </div>
   </div>
@@ -132,12 +170,30 @@ include __DIR__ . '/../includes/header.php';
     <button class="btn btn-primary btn-sm filter-action-btn" onclick="openModal('addPurchModal')">+ Add Purchase</button>
   </div>
   <div class="card">
-    <div class="card-header"><h3>Purchase List</h3><span id="purchTotal" class="badge badge-danger">Tk. 0</span></div>
+    <div class="card-header"><h3>Purchase List</h3><span id="purchTotal" class="badge badge-danger"><?= 'Tk. ' . number_format($init_purchases, 0, '.', ',') ?></span></div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead><tr><th>Date</th><th>Item</th><th>Category</th><th>Qty</th><th>Rate</th><th class="text-right">Total</th><th>Supplier</th><th></th></tr></thead>
-        <tbody id="purchTable"></tbody>
-        <tfoot><tr><td colspan="5" style="text-align:right;">Total:</td><td id="purchTableTotal" class="td-amount">Tk. 0</td><td colspan="2"></td></tr></tfoot>
+        <tbody id="purchTable">
+          <?php if(empty($initialPurchases)): ?>
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">No purchases found</td></tr>
+          <?php else: foreach($initialPurchases as $p): ?>
+          <tr>
+            <td><?= !empty($p['purchase_date']) ? date('d M Y', strtotime($p['purchase_date'])) : '-' ?></td>
+            <td><strong><?= htmlspecialchars($p['item_name'] ?? '') ?></strong><?= !empty($p['board_type']) ? '<br><span class="text-xs text-muted">'.htmlspecialchars($p['board_type']).' '.htmlspecialchars($p['board_thickness']??'').' '.htmlspecialchars($p['board_size']??'').'</span>' : '' ?></td>
+            <td><span class="badge badge-neutral"><?= htmlspecialchars($p['supply_category'] ?: '-') ?></span></td>
+            <td><?= (float)($p['quantity'] ?? 0) ?> <?= htmlspecialchars($p['unit'] ?? '') ?></td>
+            <td><?= 'Tk. ' . number_format((float)($p['rate'] ?? 0), 0, '.', ',') ?></td>
+            <td class="td-amount text-danger"><?= 'Tk. ' . number_format((float)($p['total'] ?? 0), 0, '.', ',') ?></td>
+            <td><?= htmlspecialchars($p['supplier'] ?: '-') ?></td>
+            <td class="td-actions">
+              <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditPurch(<?= $p['id'] ?>)">&#9998;</button>
+              <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="delPurch(<?= $p['id'] ?>)">&#10006;</button>
+            </td>
+          </tr>
+          <?php endforeach; endif; ?>
+        </tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right;">Total:</td><td id="purchTableTotal" class="td-amount"><?= 'Tk. ' . number_format($init_purchases, 0, '.', ',') ?></td><td colspan="2"></td></tr></tfoot>
       </table>
     </div>
   </div>
@@ -507,7 +563,7 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 var PID = <?=intval($project_id)?>;
 var TODAY = '<?=date('Y-m-d')?>';
-var allPurchases = [];
+var allPurchases = <?= json_encode($initialPurchases) ?>;
 
 //  HELPERS 
 function fmt(n){return 'Tk. '+parseFloat(n||0).toLocaleString('en-BD',{maximumFractionDigits:0});}
