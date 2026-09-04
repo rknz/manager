@@ -300,7 +300,7 @@ window.showDashDaySchedules = async function(date) {
   } catch(e) {}
 };
 
-document.addEventListener('DOMContentLoaded', function() {
+function initDashboardPage() {
   loadDashboard();
   renderDashCalendar(currentCalMonth);
   if (typeof renderTodaySchedules === 'function') {
@@ -308,7 +308,14 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(r => r.json())
       .then(d => { if (d.success) renderTodaySchedules(d.data); });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboardPage);
+} else {
+  initDashboardPage();
+}
+window.addEventListener('load', initDashboardPage);
 
 // Helpers
 function fmt(n)     { return 'Tk. ' + parseFloat(n||0).toLocaleString('en-BD',{maximumFractionDigits:0}); }

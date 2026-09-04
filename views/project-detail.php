@@ -1270,8 +1270,13 @@ function generateAndPrintFb() {
 }
 
 //  INIT 
-document.addEventListener('DOMContentLoaded',function(){
-  SmartDate.initAll();
+var isProjectDetailInitialized = false;
+function initProjectDetailPage(){
+  if (isProjectDetailInitialized) return;
+  isProjectDetailInitialized = true;
+  if (typeof SmartDate !== 'undefined' && SmartDate.initAll) {
+    try { SmartDate.initAll(); } catch(e){}
+  }
   loadHeaderStats();
   var params = new URLSearchParams(window.location.search);
   if (params.get('openfb') === '1' || params.get('tab') === 'printouts') {
@@ -1285,7 +1290,14 @@ document.addEventListener('DOMContentLoaded',function(){
   } else {
     loadPurchases();
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProjectDetailPage);
+} else {
+  initProjectDetailPage();
+}
+window.addEventListener('load', initProjectDetailPage);
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

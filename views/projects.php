@@ -348,10 +348,19 @@ function confirmDeleteProject() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  SmartDate.initAll();
+function initProjectsPage() {
+  if (typeof SmartDate !== 'undefined' && SmartDate.initAll) {
+    try { SmartDate.initAll(); } catch(e){}
+  }
   loadProjects();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initProjectsPage);
+} else {
+  initProjectsPage();
+}
+window.addEventListener('load', initProjectsPage);
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
