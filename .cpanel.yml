@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/lilyvlrn/manager.lilyinteriorsbd.com/
+    - /bin/cp -R * $DEPLOYPATH
+    - /bin/cp .env.production $DEPLOYPATH/.env
