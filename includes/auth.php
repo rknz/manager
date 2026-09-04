@@ -7,7 +7,14 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 
-require_once __DIR__ . '/../config/db.php';
+function getBasePath() {
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+    $base = preg_replace('#[\\\\/](api|views|includes)$#i', '', $scriptDir);
+    if ($base === '\\' || $base === '/' || $base === '.' || $base === false) {
+        $base = '';
+    }
+    return $base;
+}
 
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
@@ -15,6 +22,7 @@ function isLoggedIn() {
 
 function requireLogin() {
     if (!isLoggedIn()) {
+        $base = getBasePath();
         if (
             (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
             (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
@@ -22,13 +30,9 @@ function requireLogin() {
         ) {
             header('Content-Type: application/json');
             http_response_code(401);
-            $base = dirname($_SERVER['SCRIPT_NAME']);
-            if ($base === '\\' || $base === '/') $base = '';
             echo json_encode(['success' => false, 'message' => 'Session expired.', 'redirect' => $base . '/login']);
             exit;
         }
-        $base = dirname($_SERVER['SCRIPT_NAME']);
-        if ($base === '\\' || $base === '/') $base = '';
         header('Location: ' . $base . '/login');
         exit;
     }
