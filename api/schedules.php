@@ -60,8 +60,8 @@ try {
             if (!$id || empty($description)) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }
             $allowed_cats = ['Board','Paint','Glass','Electric','Payment'];
             if ($category && !in_array($category, $allowed_cats)) $category = null;
-            $stmt = $pdo->prepare("UPDATE app_schedules SET project_id=?,schedule_date=?,category=?,description=?,updated_at=NOW() WHERE id=? AND created_by=?");
-            $stmt->execute([$project_id,$schedule_date,$category,$description,$id,$_SESSION['user_id']]);
+            $stmt = $pdo->prepare("UPDATE app_schedules SET project_id=?,schedule_date=?,category=?,description=?,updated_at=NOW() WHERE id=?");
+            $stmt->execute([$project_id,$schedule_date,$category,$description,$id]);
             echo json_encode(['success'=>true,'message'=>'Schedule updated.']);
             break;
 

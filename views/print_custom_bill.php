@@ -75,6 +75,14 @@ foreach ($items as $item) {
 $grand_total = $sub_total + $labour_charge + $other_charge;
 $balance_due = $grand_total - $total_paid;
 
+$showThickness = false;
+if ($type === 'contractor') {
+    $tradeLower = mb_strtolower(trim($targetTrade));
+    if (strpos($tradeLower, 'carpenter') !== false || strpos($tradeLower, 'wood') !== false || strpos($tradeLower, '???') !== false) {
+        $showThickness = true;
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -165,7 +173,9 @@ $balance_due = $grand_total - $total_paid;
         <thead>
             <tr>
                 <th>Description</th>
+                <?php if($showThickness): ?>
                 <th style="text-align:center; width:110px;">Thickness</th>
+                <?php endif; ?>
                 <th class="text-right" style="width:70px;">Qty</th>
                 <th class="text-right" style="width:100px;">Rate (Tk)</th>
                 <th class="text-right" style="width:110px;">Amount (Tk)</th>
@@ -175,14 +185,16 @@ $balance_due = $grand_total - $total_paid;
             <?php foreach ($items as $item): ?>
             <tr>
                 <td><?= htmlspecialchars($item['description'] ?? '') ?></td>
+                <?php if($showThickness): ?>
                 <td style="text-align:center;"><?= !empty($item['thickness']) ? htmlspecialchars($item['thickness']) : '-' ?></td>
+                <?php endif; ?>
                 <td class="text-right"><?= htmlspecialchars((string)($item['qty'] ?? $item['quantity'] ?? '')) ?></td>
                 <td class="text-right"><?= number_format(floatval($item['rate'] ?? 0), 2) ?></td>
                 <td class="text-right"><?= number_format(floatval($item['total'] ?? 0), 2) ?></td>
             </tr>
             <?php endforeach; ?>
             <?php if(empty($items)): ?>
-            <tr><td colspan="5" style="text-align:center;">No items provided.</td></tr>
+            <tr><td colspan="<?= $showThickness ? 5 : 4 ?>" style="text-align:center;">No items provided.</td></tr>
             <?php endif; ?>
         </tbody>
     </table>

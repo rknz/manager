@@ -492,7 +492,26 @@ include __DIR__ . '/../includes/header.php';
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addAdvModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="saveAdvance()">Save</button></div>
 </div></div>
 
-<!-- GENERATE FINAL BILL MODAL -->
+<!-- EDIT ADVANCE MODAL -->
+<div class="modal-overlay" id="editAdvModal"><div class="modal" data-form-nav>
+  <div class="modal-header"><h3>&#9998; Edit Contractor Advance</h3><div class="modal-close" onclick="closeModal('editAdvModal')">&times;</div></div>
+  <div class="modal-body">
+    <input type="hidden" id="editAdvId">
+    <div class="form-group"><label class="form-label">Contractor <span class="required">*</span></label><select id="editAdvContractor" class="form-select"><option value="">-- Select Contractor --</option><?php foreach($all_contractors as $c): ?><option value="<?=$c['id']?>"><?=htmlspecialchars($c['name'])?> (<?=htmlspecialchars($c['trade'])?>)</option><?php endforeach; ?></select></div>
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Amount (Tk) <span class="required">*</span></label><input type="number" id="editAdvAmount" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="text" id="editAdvDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="editAdvDateH"><input type="hidden" id="editAdvDateH"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Who Paid</label><input type="text" id="editAdvWhoPaid" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Who Received</label><input type="text" id="editAdvWhoRec" class="form-input"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input type="text" id="editAdvNotes" class="form-input"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editAdvModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateAdvance()">Update</button></div>
+</div></div>
+
+  <!-- GENERATE FINAL BILL MODAL -->
 <div class="modal-overlay" id="generateFinalBillModal">
   <div class="modal final-bill-modal" data-form-nav>
     <div class="fb-mobile-drag-handle"></div>
@@ -738,7 +757,22 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addLaborPayModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="saveLaborPayment()">Save</button></div>
 </div></div>
 
-<!-- ADD CLIENT PAYMENT -->
+<!-- EDIT LABOR PAYMENT -->
+<div class="modal-overlay" id="editLaborPayModal"><div class="modal" data-form-nav>
+  <div class="modal-header"><h3>&#9998; Edit Labor Payment</h3><div class="modal-close" onclick="closeModal('editLaborPayModal')">&times;</div></div>
+  <div class="modal-body">
+    <input type="hidden" id="editLpId">
+    <div class="form-group"><label class="form-label">Worker <span class="required">*</span></label><select id="editLpWorker" class="form-select"><option value="">-- Select Worker --</option><?php foreach($workers as $w): ?><option value="<?=$w['id']?>"><?=htmlspecialchars($w['name'])?></option><?php endforeach; ?></select></div>
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Amount (Tk) <span class="required">*</span></label><input type="number" id="editLpAmount" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="text" id="editLpDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="editLpDateH"><input type="hidden" id="editLpDateH"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Who Paid</label><input type="text" id="editLpWho" class="form-input"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editLaborPayModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateLaborPayment()">Update</button></div>
+</div></div>
+
+  <!-- ADD CLIENT PAYMENT -->
 <div class="modal-overlay" id="addClientPayModal"><div class="modal" data-form-nav>
   <div class="modal-header"><h3>&#128176; Client Payment</h3><div class="modal-close" onclick="closeModal('addClientPayModal')">&times;</div></div>
   <div class="modal-body">
@@ -752,7 +786,22 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addClientPayModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="saveClientPayment()">Save</button></div>
 </div></div>
 
-<!-- ADD SCHEDULE -->
+<!-- EDIT CLIENT PAYMENT -->
+<div class="modal-overlay" id="editClientPayModal"><div class="modal" data-form-nav>
+  <div class="modal-header"><h3>&#9998; Edit Client Payment</h3><div class="modal-close" onclick="closeModal('editClientPayModal')">&times;</div></div>
+  <div class="modal-body">
+    <input type="hidden" id="editCpId">
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Amount (Tk) <span class="required">*</span></label><input type="number" id="editCpAmount" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="text" id="editCpDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="editCpDateH"><input type="hidden" id="editCpDateH"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Method</label><select id="editCpMethod" class="form-select"><option>Cash</option><option>Bank Transfer</option><option>Cheque</option><option>Mobile Banking</option></select></div>
+    <div class="form-group"><label class="form-label">Notes</label><input type="text" id="editCpNotes" class="form-input"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editClientPayModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateClientPayment()">Update</button></div>
+</div></div>
+
+  <!-- ADD SCHEDULE -->
 <div class="modal-overlay" id="addSchModal"><div class="modal" data-form-nav>
   <div class="modal-header"><h3>&#128197; Add Schedule</h3><div class="modal-close" onclick="closeModal('addSchModal')">&times;</div></div>
   <div class="modal-body">
@@ -765,7 +814,21 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addSchModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="saveProjectSchedule()">Save</button></div>
 </div></div>
 
-<!-- EDIT PROJECT -->
+<!-- EDIT SCHEDULE -->
+<div class="modal-overlay" id="editSchModal"><div class="modal" data-form-nav>
+  <div class="modal-header"><h3>&#9998; Edit Schedule</h3><div class="modal-close" onclick="closeModal('editSchModal')">&times;</div></div>
+  <div class="modal-body">
+    <input type="hidden" id="editSchId">
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Date <span class="required">*</span></label><input type="text" id="editSchDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="editSchDateH"><input type="hidden" id="editSchDateH"></div>
+      <div class="form-group"><label class="form-label">Category</label><select id="editSchCat" class="form-select"><option value="">General</option><option>Board</option><option>Paint</option><option>Glass</option><option>Electric</option><option>Payment</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Description <span class="required">*</span></label><textarea id="editSchDesc" class="form-textarea" rows="2" placeholder="What needs to be done?"></textarea></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editSchModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateSchedule()">Update</button></div>
+</div></div>
+
+  <!-- EDIT PROJECT -->
 <div class="modal-overlay" id="editProjectModal">
   <div class="modal modal-lg" data-form-nav>
     <div class="modal-header">
@@ -1243,7 +1306,7 @@ async function loadBilling(){
     return;
   }
   if(body) {
-    body.innerHTML=billData.map(a=>`<tr><td><strong>${esc(a.contractor_name||'-')}</strong></td><td class="td-amount">${fmt(a.amount)}</td><td>${esc(a.payment_method||'-')}</td><td>${esc(a.who_paid||'-')}</td><td>${fmtDate(a.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delAdv(${a.id})">&#10006;</button></td></tr>`).join('');
+    body.innerHTML=billData.map(a=>`<tr><td><strong>${esc(a.contractor_name||'-')}</strong></td><td class="td-amount">${fmt(a.amount)}</td><td>${esc(a.payment_method||'-')}</td><td>${esc(a.who_paid||'-')}</td><td>${fmtDate(a.payment_date)}</td><td><div style="display:inline-flex;gap:4px;"><button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditAdv(${a.id})">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delAdv(${a.id})" title="Delete">&#10006;</button></div></td></tr>`).join('');
   }
   if(mList) {
     mList.innerHTML=billData.map(a=>{
@@ -1256,7 +1319,7 @@ async function loadBilling(){
             <div class="mrc-title">${esc(a.contractor_name || '-')}</div>
           </div>
           <div class="mrc-corner-actions">
-            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delAdv(${a.id})">&#10006;</button>
+            <button type="button" class="mrc-icon-btn mrc-btn-edit" title="Edit" onclick="openEditAdv(${a.id})" style="color:var(--text-muted);font-size:13px;margin-right:4px;">&#9998;</button><button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delAdv(${a.id})">&#10006;</button>
           </div>
         </div>
         <div class="mrc-title-row">
@@ -1291,6 +1354,48 @@ async function saveAdvance(){
   const r=await fetch(BASE_PATH + '/api/billing.php?action=add_advance',{method:'POST',body:fd});
   const d=await r.json();
   if(d.success){showToast('Advance saved!','success');closeModal('addAdvModal');loadBilling();loadHeaderStats();}else showToast(d.message||'Error','error');
+}
+function openEditAdv(id) {
+  const a = billData.find(x => x.id == id);
+  if (!a) return;
+  document.getElementById('editAdvId').value = a.id;
+  document.getElementById('editAdvContractor').value = a.contractor_id;
+  document.getElementById('editAdvAmount').value = a.amount;
+  SmartDate.setDateValue(document.getElementById('editAdvDate'), a.payment_date || TODAY);
+  document.getElementById('editAdvWhoPaid').value = a.who_paid || '';
+  document.getElementById('editAdvWhoRec').value = a.who_received || '';
+  document.getElementById('editAdvNotes').value = a.notes || '';
+  openModal('editAdvModal');
+}
+async function updateAdvance() {
+  const id = document.getElementById('editAdvId').value;
+  const cid = document.getElementById('editAdvContractor').value;
+  const amt = parseFloat(document.getElementById('editAdvAmount').value) || 0;
+  if (!id || !cid || amt <= 0) { showToast('Contractor and amount required', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('project_id', PID);
+  fd.append('contractor_id', cid);
+  fd.append('amount', amt);
+  fd.append('payment_date', document.getElementById('editAdvDateH').value || TODAY);
+  fd.append('who_paid', document.getElementById('editAdvWhoPaid').value);
+  fd.append('who_received', document.getElementById('editAdvWhoRec').value);
+  fd.append('notes', document.getElementById('editAdvNotes').value);
+  fd.append('payment_method', 'Cash');
+  try {
+    const r = await fetch(BASE_PATH + '/api/billing.php?action=edit_advance&project_id=' + PID, {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Advance updated!', 'success');
+      closeModal('editAdvModal');
+      loadBilling();
+      loadHeaderStats();
+    } else {
+      showToast(d.message || 'Error updating advance', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
 async function delAdv(id){
     confirmDelete('Delete advance?',async function(){
@@ -1539,8 +1644,10 @@ async function loadWorkerSummary(){
   if(!d.success||!d.data.length){box.innerHTML='<div class="empty-state" style="padding:16px;"><p>No data</p></div>';return;}
   box.innerHTML=d.data.map(w=>`<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-light);"><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">${esc(w.worker_name)}</div><div style="font-size:11px;color:var(--text-muted);">${w.total_days} days</div></div><div style="text-align:right;"><div style="font-size:12px;">Earned: <strong>${fmt(w.total_earned)}</strong></div><div style="font-size:12px;color:${w.balance_due>0?'var(--danger)':'var(--success)'};">Due: <strong>${fmt(w.balance_due)}</strong></div></div></div>`).join('');
 }
+let allLaborPayments = [];
 async function loadLaborPayments(){
   const r=await fetch(BASE_PATH + '/api/attendance.php?action=list_payments&project_id='+PID);const d=await r.json();
+  allLaborPayments = d.data || [];
   const body=document.getElementById('laborPayTable');
   const mList=document.getElementById('laborPayMobileList');
   let tot=0;
@@ -1553,7 +1660,7 @@ async function loadLaborPayments(){
   if(body) {
     body.innerHTML=d.data.map(p=>{
       tot+=parseFloat(p.amount||0);
-      return`<tr><td><strong>${esc(p.worker_name||'-')}</strong></td><td class="td-amount">${fmt(p.amount)}</td><td>${fmtDate(p.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delLP(${p.id})">&#10006;</button></td></tr>`;
+      return`<tr><td><strong>${esc(p.worker_name||'-')}</strong></td><td class="td-amount">${fmt(p.amount)}</td><td>${fmtDate(p.payment_date)}</td><td><div style="display:inline-flex;gap:4px;"><button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditLaborPay(${p.id})">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delLP(${p.id})" title="Delete">&#10006;</button></div></td></tr>`;
     }).join('');
   }
   if(mList) {
@@ -1567,7 +1674,7 @@ async function loadLaborPayments(){
             <div class="mrc-title">${esc(p.worker_name || '-')}</div>
           </div>
           <div class="mrc-corner-actions">
-            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delLP(${p.id})">&#10006;</button>
+            <button type="button" class="mrc-icon-btn mrc-btn-edit" title="Edit" onclick="openEditLaborPay(${p.id})" style="color:var(--text-muted);font-size:13px;margin-right:4px;">&#9998;</button><button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delLP(${p.id})">&#10006;</button>
           </div>
         </div>
         <div class="mrc-title-row">
@@ -1608,6 +1715,45 @@ async function delAtt(id){
         }
     });
 }
+function openEditLaborPay(id) {
+  const p = allLaborPayments.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('editLpId').value = p.id;
+  document.getElementById('editLpWorker').value = p.worker_id;
+  document.getElementById('editLpAmount').value = p.amount;
+  SmartDate.setDateValue(document.getElementById('editLpDate'), p.payment_date || TODAY);
+  document.getElementById('editLpWho').value = p.who_paid || '';
+  openModal('editLaborPayModal');
+}
+async function updateLaborPayment() {
+  const id = document.getElementById('editLpId').value;
+  const wid = document.getElementById('editLpWorker').value;
+  const amt = parseFloat(document.getElementById('editLpAmount').value) || 0;
+  if (!id || !wid || amt <= 0) { showToast('Worker and amount required', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('project_id', PID);
+  fd.append('worker_id', wid);
+  fd.append('amount', amt);
+  fd.append('payment_date', document.getElementById('editLpDateH').value || TODAY);
+  fd.append('who_paid', document.getElementById('editLpWho').value);
+  fd.append('payment_method', 'Cash');
+  try {
+    const r = await fetch(BASE_PATH + '/api/attendance.php?action=edit_payment&project_id=' + PID, {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Payment updated!', 'success');
+      closeModal('editLaborPayModal');
+      loadLaborPayments();
+      loadWorkerSummary();
+      loadHeaderStats();
+    } else {
+      showToast(d.message || 'Error updating payment', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
 async function delLP(id){
     confirmDelete('Delete payment?',async function(){
         try {
@@ -1637,13 +1783,50 @@ async function loadClientPayments(){
   if(!d.success||!d.data.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No payments</td></tr>';document.getElementById('cpTotal').textContent='Tk. 0';document.getElementById('cpTableTotal').textContent='Tk. 0';return;}
   d.data.forEach(p=>tot+=parseFloat(p.amount||0));
   document.getElementById('cpTotal').textContent=fmt(tot);document.getElementById('cpTableTotal').textContent=fmt(tot);
-  body.innerHTML=d.data.map(p=>`<tr><td>${fmtDate(p.payment_date)}</td><td>${esc(p.payment_method||'-')}</td><td class="td-amount text-success">${fmt(p.amount)}</td><td>${esc(p.notes||'-')}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delCP(${p.id})">&#10006;</button></td></tr>`).join('');
+  allClientPayments = d.data || [];
+  body.innerHTML=d.data.map(p=>`<tr><td>${fmtDate(p.payment_date)}</td><td>${esc(p.payment_method||'-')}</td><td class="td-amount text-success">${fmt(p.amount)}</td><td>${esc(p.notes||'-')}</td><td><div style="display:inline-flex;gap:4px;"><button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditCP(${p.id})">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delCP(${p.id})" title="Delete">&#10006;</button></div></td></tr>`).join('');
 }
 async function saveClientPayment(){
   const amt=parseFloat(document.getElementById('cpAmount').value)||0;if(amt<=0){showToast('Amount required','warning');return;}
   const fd=new FormData();fd.append('project_id',PID);fd.append('amount',amt);fd.append('payment_date',document.getElementById('cpDateH').value||TODAY);fd.append('payment_method',document.getElementById('cpMethod').value);fd.append('notes',document.getElementById('cpNotes').value);
   const r=await fetch(BASE_PATH + '/api/client_payments.php?action=create',{method:'POST',body:fd});const d=await r.json();
   if(d.success){showToast('Payment saved!','success');closeModal('addClientPayModal');loadClientPayments();loadHeaderStats();}else showToast(d.message||'Error','error');
+}
+function openEditCP(id) {
+  const p = allClientPayments.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('editCpId').value = p.id;
+  document.getElementById('editCpAmount').value = p.amount;
+  SmartDate.setDateValue(document.getElementById('editCpDate'), p.payment_date || TODAY);
+  document.getElementById('editCpMethod').value = p.payment_method || 'Cash';
+  document.getElementById('editCpNotes').value = p.notes || '';
+  openModal('editClientPayModal');
+}
+async function updateClientPayment() {
+  const id = document.getElementById('editCpId').value;
+  const amt = parseFloat(document.getElementById('editCpAmount').value) || 0;
+  if (!id || amt <= 0) { showToast('Amount required', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('project_id', PID);
+  fd.append('amount', amt);
+  fd.append('payment_date', document.getElementById('editCpDateH').value || TODAY);
+  fd.append('payment_method', document.getElementById('editCpMethod').value);
+  fd.append('notes', document.getElementById('editCpNotes').value);
+  try {
+    const r = await fetch(BASE_PATH + '/api/client_payments.php?action=update&project_id=' + PID, {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Payment updated!', 'success');
+      closeModal('editClientPayModal');
+      loadClientPayments();
+      loadHeaderStats();
+    } else {
+      showToast(d.message || 'Error updating payment', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
 async function delCP(id){
     confirmDelete('Delete payment?',async function(){
@@ -1699,7 +1882,8 @@ async function loadSchedules(){
   const body=document.getElementById('schTable');
   if(!d.success||!d.data.length){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted);">No schedules</td></tr>';return;}
   const catCol={Board:'var(--stat-blue)',Paint:'var(--stat-orange)',Glass:'var(--success)',Electric:'var(--warning)',Payment:'var(--primary)'};
-  body.innerHTML=d.data.map(s=>`<tr><td>${fmtDate(s.schedule_date)}</td><td>${s.category?`<span class="badge" style="background:${catCol[s.category]??'var(--border)'}22;color:${catCol[s.category]??'var(--text-muted)'};">${esc(s.category)}</span>`:'-'}</td><td>${esc(s.description)}</td><td><span class="badge ${s.is_done?'badge-success':'badge-warning'}">${s.is_done?'Done':'Pending'}</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="toggleSchDone(${s.id},${s.is_done})">${s.is_done?'&#8635;':'&#10003;'}</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delSch(${s.id})">&#10006;</button></td></tr>`).join('');
+  allSchedules = d.data || [];
+  body.innerHTML=d.data.map(s=>`<tr><td>${fmtDate(s.schedule_date)}</td><td>${s.category?`<span class="badge" style="background:${catCol[s.category]??'var(--border)'}22;color:${catCol[s.category]??'var(--text-muted)'};">${esc(s.category)}</span>`:'-'}</td><td>${esc(s.description)}</td><td><span class="badge ${s.is_done?'badge-success':'badge-warning'}">${s.is_done?'Done':'Pending'}</span></td><td class="td-actions"><div style="display:inline-flex;gap:4px;"><button class="btn btn-ghost btn-sm" onclick="toggleSchDone(${s.id},${s.is_done})">${s.is_done?'&#8635;':'&#10003;'}</button><button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditSchedule(${s.id})">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delSch(${s.id})" title="Delete">&#10006;</button></div></td></tr>`).join('');
 }
 async function saveProjectSchedule(){
   const desc=document.getElementById('schDesc').value.trim();if(!desc){showToast('Description required','warning');return;}
@@ -1708,6 +1892,39 @@ async function saveProjectSchedule(){
   if(d.success){showToast('Schedule added!','success');closeModal('addSchModal');loadSchedules();}else showToast(d.message||'Error','error');
 }
 async function toggleSchDone(id,isDone){await fetch(BASE_PATH + '/api/schedules.php?action=mark_done',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,is_done:isDone?0:1})});loadSchedules();}
+function openEditSchedule(id) {
+  const s = allSchedules.find(x => x.id == id);
+  if (!s) return;
+  document.getElementById('editSchId').value = s.id;
+  SmartDate.setDateValue(document.getElementById('editSchDate'), s.schedule_date || TODAY);
+  document.getElementById('editSchCat').value = s.category || '';
+  document.getElementById('editSchDesc').value = s.description || '';
+  openModal('editSchModal');
+}
+async function updateSchedule() {
+  const id = document.getElementById('editSchId').value;
+  const desc = document.getElementById('editSchDesc').value.trim();
+  if (!id || !desc) { showToast('Description required', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('project_id', PID);
+  fd.append('description', desc);
+  fd.append('schedule_date', document.getElementById('editSchDateH').value || TODAY);
+  fd.append('category', document.getElementById('editSchCat').value);
+  try {
+    const r = await fetch(BASE_PATH + '/api/schedules.php?action=update&project_id=' + PID, {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Schedule updated!', 'success');
+      closeModal('editSchModal');
+      loadSchedules();
+    } else {
+      showToast(d.message || 'Error updating schedule', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
 async function delSch(id){
     confirmDelete('Delete schedule?',async function(){
         try {
@@ -1826,14 +2043,32 @@ async function openFinalBillModal(defaultType = 'contractor') {
   }
 }
 
+function updateThicknessVisibility() {
+  const modal = document.getElementById('generateFinalBillModal');
+  const type = document.getElementById('fbType') ? document.getElementById('fbType').value : 'contractor';
+  const targetSel = document.getElementById('fbTarget');
+  const opt = targetSel && targetSel.selectedIndex >= 0 ? targetSel.options[targetSel.selectedIndex] : null;
+  const isCarpenter = opt ? (opt.getAttribute('data-is-carpenter') === '1') : false;
+
+  if (modal) {
+    if (type === 'contractor' && isCarpenter) {
+      modal.classList.remove('hide-thickness');
+    } else {
+      modal.classList.add('hide-thickness');
+    }
+  }
+}
+
 async function loadFbTargets() {
   const type = document.getElementById('fbType').value;
   const targetSel = document.getElementById('fbTarget');
   targetSel.innerHTML = '<option value="">-- Loading... --</option>';
   
+  const pid = typeof currentProjectId !== 'undefined' ? currentProjectId : (document.getElementById('fbProjectId') ? document.getElementById('fbProjectId').value : 0);
+
   try {
     if (type === 'contractor') {
-      const r = await fetch(BASE_PATH + '/api/billing.php?action=list_project_contractors&project_id=' + PID);
+      const r = await fetch(BASE_PATH + '/api/billing.php?action=list_project_contractors&project_id=' + pid);
       const d = await r.json();
       let list = d.data || [];
       if (!list.length) {
@@ -1841,16 +2076,25 @@ async function loadFbTargets() {
         const d2 = await r2.json();
         list = d2.data || [];
       }
-      targetSel.innerHTML = '<option value="">-- Select Contractor --</option>' + list.map(c => `<option value="${c.contractor_id || c.id}">${esc(c.name)} (${esc(c.trade||'Contractor')})</option>`).join('');
+      targetSel.innerHTML = '<option value="">-- Select Contractor --</option>' + list.map(c => {
+        const trade = c.trade || 'Contractor';
+        const tradeLower = trade.toLowerCase();
+        const isCarpenter = (tradeLower.includes('carpenter') || tradeLower.includes('wood') || tradeLower.includes('???'));
+        return `<option value="${c.contractor_id || c.id}" data-trade="${esc(trade)}" data-is-carpenter="${isCarpenter ? '1' : '0'}">${esc(c.name)} (${esc(trade)})</option>`;
+      }).join('');
     } else {
       const r = await fetch(BASE_PATH + '/api/workers.php?action=list');
       const d = await r.json();
       const list = d.data || [];
-      targetSel.innerHTML = '<option value="">-- Select Worker --</option>' + list.map(w => `<option value="${w.id}">${esc(w.name)} (${esc(w.trade||'Worker')})</option>`).join('');
+      targetSel.innerHTML = '<option value="">-- Select Worker --</option>' + list.map(w => {
+        const trade = w.trade || 'Worker';
+        return `<option value="${w.id}" data-trade="${esc(trade)}" data-is-carpenter="0">${esc(w.name)} (${esc(trade)})</option>`;
+      }).join('');
     }
   } catch(e) {
     targetSel.innerHTML = '<option value="">-- Error loading --</option>';
   }
+  updateThicknessVisibility();
 }
 
 async function fetchFinalBillData(targetId) {

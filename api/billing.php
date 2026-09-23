@@ -68,9 +68,19 @@ try {
             $who_paid = trim($_POST['who_paid'] ?? '');
             $who_recv = trim($_POST['who_received'] ?? '');
             $notes = trim($_POST['notes'] ?? '');
+            $new_cid = intval($_POST['contractor_id'] ?? 0);
+            $new_pid = intval($_POST['new_project_id'] ?? $_POST['project_id'] ?? $project_id);
             if (!$id || $amount <= 0) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }
-            $stmt = $pdo->prepare("UPDATE app_contractor_advances SET amount=?,payment_date=?,payment_method=?,who_paid=?,who_received=?,notes=?,updated_at=NOW() WHERE id=? AND project_id=? AND is_deleted=0");
-            $stmt->execute([$amount,$date,$method,$who_paid,$who_recv,$notes,$id,$project_id]);
+            if ($new_cid > 0 && $new_pid > 0) {
+                $stmt = $pdo->prepare("UPDATE app_contractor_advances SET project_id=?, contractor_id=?, amount=?, payment_date=?, payment_method=?, who_paid=?, who_received=?, notes=?, updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$new_pid, $new_cid, $amount, $date, $method, $who_paid, $who_recv, $notes, $id]);
+            } else if ($new_cid > 0) {
+                $stmt = $pdo->prepare("UPDATE app_contractor_advances SET contractor_id=?, amount=?, payment_date=?, payment_method=?, who_paid=?, who_received=?, notes=?, updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$new_cid, $amount, $date, $method, $who_paid, $who_recv, $notes, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE app_contractor_advances SET amount=?, payment_date=?, payment_method=?, who_paid=?, who_received=?, notes=?, updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$amount, $date, $method, $who_paid, $who_recv, $notes, $id]);
+            }
             echo json_encode(['success'=>true,'message'=>'Advance updated.']);
             break;
 
@@ -326,13 +336,13 @@ try {
             echo json_encode(['success'=>true, 'data'=>$items, 'category'=>$catName, 'trade'=>$trade, 'is_carpenter'=>$isCarpenter, 'is_painter'=>$isPainter, 'is_electric'=>$isElectric, 'attendance'=>$attendance, 'payments'=>$payments]);
             break;
 
-        case 'get_worker_bill_data':
+                case 'get_worker_bill_data':
             $wid = intval($_GET['worker_id'] ?? $_POST['worker_id'] ?? 0);
             if (!$wid) { echo json_encode(['success'=>false,'message'=>'Worker ID required.']); exit; }
 
             $st = $pdo->prepare("SELECT id, name, phone, trade, address, default_daily_rate FROM app_workers WHERE id=?");
             $st->execute([$wid]);
-            $worker = $st->fetch();
+            $worker = $st->fetch(PDO::FETCH_ASSOC);
             if (!$worker) { echo json_encode(['success'=>false,'message'=>'Worker not found.']); exit; }
 
             // Fetch attendance records for this worker in this project
@@ -340,21 +350,17 @@ try {
             $st->execute([$project_id, $wid]);
             $attRows = $st->fetchAll(PDO::FETCH_ASSOC);
 
-            $items = [];
             $totalDays = 0;
             $totalEarned = 0;
+            $startDate = null;
+            $endDate = null;
+
             foreach ($attRows as $a) {
                 $days = floatval($a['attendance_multiplier']);
-                $rate = floatval($a['daily_rate']);
                 $earned = floatval($a['earned']);
-                $dateFormatted = date('d M Y', strtotime($a['work_date']));
-                $desc = "Work on " . $dateFormatted . (!empty($a['notes']) ? " (" . $a['notes'] . ")" : "");
-                $items[] = [
-                    'description' => $desc,
-                    'qty' => $days,
-                    'rate' => $rate,
-                    'total' => $earned
-                ];
+                $wDate = $a['work_date'];
+                if (!$startDate || $wDate < $startDate) $startDate = $wDate;
+                if (!$endDate || $wDate > $endDate) $endDate = $wDate;
                 $totalDays += $days;
                 $totalEarned += $earned;
             }
@@ -364,15 +370,40 @@ try {
             $st->execute([$project_id, $wid]);
             $totalPaid = (float)$st->fetchColumn();
 
-            echo json_encode([
+            $avgRate = ($totalDays > 0) ? round($totalEarned / $totalDays, 2) : floatval($worker['default_daily_rate'] ?? 0);
+            $dateRangeStr = "";
+            if ($startDate && $endDate) {
+                $dateRangeStr = ($startDate === $endDate)
+                    ? date('d M Y', strtotime($startDate))
+                    : date('d M Y', strtotime($startDate)) . " to " . date('d M Y', strtotime($endDate));
+            }
+
+            $summaryDesc = "Labor Attendance Summary" . ($dateRangeStr ? " (" . $dateRangeStr . ")" : "") . " - " . number_format($totalDays, 2) . " Days";
+
+            $items = [
+                [
+                    'description' => $summaryDesc,
+                    'thickness' => '',
+                    'qty' => $totalDays ?: 1,
+                    'rate' => $avgRate ?: $totalEarned,
+                    'total' => $totalEarned
+                ]
+            ];
+
+            $out = [
                 'success' => true,
                 'worker' => $worker,
                 'items' => $items,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'date_range' => $dateRangeStr,
                 'total_days' => $totalDays,
                 'total_earned' => $totalEarned,
                 'total_paid' => $totalPaid,
-                'balance_due' => max(0, $totalEarned - $totalPaid)
-            ]);
+                'balance_due' => $totalEarned - $totalPaid
+            ];
+
+            echo json_encode($out);
             break;
 
         case 'get_advance_preview':
@@ -473,6 +504,6 @@ try {
         default:
             echo json_encode(['success'=>false,'message'=>'Invalid action']);
     }
-} catch (Exception $e) {
+} catch (Throwable $e) {
     echo json_encode(['success'=>false,'message'=>'Error: '.$e->getMessage()]);
 }

@@ -1,5 +1,5 @@
 <?php
-// views/quick-purchase.php — Fast purchase entry
+// views/quick-purchase.php - Fast purchase entry
 require_once __DIR__ . '/../includes/auth.php';
 requireLogin();
 $pageTitle = 'Quick Purchase';
@@ -148,8 +148,95 @@ include __DIR__ . '/../includes/header.php';
   </div>
 </div>
 
+<!-- EDIT PURCHASE MODAL -->
+<div class="modal-overlay" id="editPurchaseModal">
+  <div class="modal modal-lg" data-form-nav>
+    <div class="modal-header">
+      <h3>&#9998; Edit Purchase</h3>
+      <div class="modal-close" onclick="closeModal('editPurchaseModal')">&times;</div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editPurId">
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Project <span class="required">*</span></label>
+          <select id="editPurProject" class="form-select">
+            <?php foreach($projects as $p): ?>
+            <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purchase Date</label>
+          <input type="text" id="editPurDate" class="form-input smart-date" placeholder="<?= date('j/n/y') ?>" data-date-target="editPurDateHidden">
+          <input type="hidden" id="editPurDateHidden">
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="editPurCategory" class="form-select" onchange="toggleEditBoardFields()">
+            <option value="">-- Category --</option>
+            <?php if(!empty($categories)): foreach($categories as $cat): ?>
+            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+            <?php endforeach; else: ?>
+            <option>Board & Wood</option><option>Paint</option><option>Hardware</option>
+            <option>Glass</option><option>Electric</option><option>Labour</option><option>Other</option>
+            <?php endif; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="editPurItemLabel">Item Name <span class="required">*</span></label>
+          <input type="text" id="editPurItem" class="form-input">
+        </div>
+      </div>
+
+      <div id="editBoardFields" style="display:none;margin-bottom:12px;">
+        <div class="form-group">
+          <label class="form-label">Board Thickness (mm)</label>
+          <input type="text" id="editPurThickness" class="form-input" placeholder="e.g. 12mm">
+        </div>
+      </div>
+
+      <div class="three-col">
+        <div class="form-group">
+          <label class="form-label">Quantity <span class="required">*</span></label>
+          <input type="number" id="editPurQty" class="form-input" step="any" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <input type="text" id="editPurUnit" class="form-input" placeholder="pcs">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rate (Tk) <span class="required">*</span></label>
+          <input type="number" id="editPurRate" class="form-input" step="any" min="0">
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Supplier</label>
+          <input type="text" id="editPurSupplier" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input type="text" id="editPurNotes" class="form-input">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editPurchaseModal')">Cancel</button>
+      <button class="btn btn-primary" data-save-btn onclick="updatePurchase()">Update Purchase</button>
+    </div>
+  </div>
+</div>
+
 <script>
-var TODAY = '<?= date('Y-m-d') ?>';// Category change -> show/hide board fields
+var TODAY = '<?= date('Y-m-d') ?>';
+let todayPurchasesData = [];
+
+// Category change -> show/hide board fields
 document.getElementById('qpCategory').addEventListener('change', function() {
   var isBoard = this.value === 'Board' || this.value === 'Board & Wood' || /board/i.test(this.value);
   var itemLabel = document.getElementById('qpItemLabel');
@@ -180,6 +267,20 @@ document.getElementById('qpCategory').addEventListener('change', function() {
     if (qtyLabel) qtyLabel.innerHTML = 'Quantity <span class="required">*</span>';
   }
 });
+
+function toggleEditBoardFields() {
+  const cat = document.getElementById('editPurCategory').value;
+  const isBoard = cat === 'Board' || cat === 'Board & Wood' || /board/i.test(cat);
+  const bf = document.getElementById('editBoardFields');
+  const lbl = document.getElementById('editPurItemLabel');
+  if (isBoard) {
+    bf.style.display = 'block';
+    if (lbl) lbl.innerHTML = 'Board Type <span class="required">*</span>';
+  } else {
+    bf.style.display = 'none';
+    if (lbl) lbl.innerHTML = 'Item Name <span class="required">*</span>';
+  }
+}
 
 function integerOnly(el) {
   el.value = el.value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
@@ -291,13 +392,14 @@ async function loadTodayPurchases() {
     if (!pid) { list.innerHTML = '<div class="empty-state" style="padding:24px;"><p>Select a project to see today\'s entries</p></div>'; return; }
     const r = await fetch(url);
     const d = await r.json();
-    if (!d.success || !d.data.length) {
+    todayPurchasesData = d.data || [];
+    if (!d.success || !todayPurchasesData.length) {
       list.innerHTML = '<div class="empty-state" style="padding:24px;"><p>No entries today</p></div>';
       document.getElementById('todayTotalBadge').textContent = 'Tk. 0';
       return;
     }
     let total = 0;
-    list.innerHTML = d.data.map(p => {
+    list.innerHTML = todayPurchasesData.map(p => {
       total += parseFloat(p.total || 0);
       return `<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-light);">
         <div style="flex:1;min-width:0;">
@@ -306,12 +408,77 @@ async function loadTodayPurchases() {
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-family:'Poppins','Noto Sans Bengali','Hind Siliguri','Nirmala UI','Vrinda','Shonar Bangla',sans-serif;font-weight:700;font-size:13px;color:var(--danger);">Tk.${parseFloat(p.total).toLocaleString('en-BD',{maximumFractionDigits:0})}</div>
-          <button onclick="deletePurchase(${p.id})" style="font-size:11px;color:var(--text-muted);cursor:pointer;background:none;border:none;">&#10006;</button>
+          <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;margin-top:2px;">
+            <button onclick="openEditTodayPurchase(${p.id})" style="font-size:12px;color:var(--text-muted);cursor:pointer;background:none;border:none;padding:2px 4px;" title="Edit">&#9998;</button>
+            <button onclick="deletePurchase(${p.id})" style="font-size:11px;color:var(--text-muted);cursor:pointer;background:none;border:none;padding:2px 4px;" title="Delete">&#10006;</button>
+          </div>
         </div>
       </div>`;
     }).join('');
     document.getElementById('todayTotalBadge').textContent = 'Tk. ' + total.toLocaleString('en-BD',{maximumFractionDigits:0});
   } catch(e) { list.innerHTML = '<div class="empty-state"><p>Error loading</p></div>'; }
+}
+
+function openEditTodayPurchase(id) {
+  const p = todayPurchasesData.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('editPurId').value = p.id;
+  document.getElementById('editPurProject').value = p.project_id || document.getElementById('qpProject').value;
+  SmartDate.setDateValue(document.getElementById('editPurDate'), p.purchase_date || TODAY);
+  document.getElementById('editPurCategory').value = p.supply_category || '';
+  document.getElementById('editPurItem').value = p.item_name || '';
+  document.getElementById('editPurThickness').value = p.board_thickness || '';
+  document.getElementById('editPurQty').value = p.quantity || '';
+  document.getElementById('editPurUnit').value = p.unit || 'pcs';
+  document.getElementById('editPurRate').value = p.rate || '';
+  document.getElementById('editPurSupplier').value = p.supplier || '';
+  document.getElementById('editPurNotes').value = p.notes || '';
+  toggleEditBoardFields();
+  openModal('editPurchaseModal');
+}
+
+async function updatePurchase() {
+  const id = document.getElementById('editPurId').value;
+  const pid = document.getElementById('editPurProject').value;
+  const item = document.getElementById('editPurItem').value.trim();
+  const qty = parseFloat(document.getElementById('editPurQty').value) || 0;
+  const rate = parseFloat(document.getElementById('editPurRate').value) || 0;
+  const catVal = document.getElementById('editPurCategory').value;
+  const isBoard = catVal === 'Board' || catVal === 'Board & Wood' || /board/i.test(catVal);
+  const thickVal = document.getElementById('editPurThickness').value.trim();
+
+  if (!id || !pid) { showToast('Invalid purchase or project', 'warning'); return; }
+  if (!item) { showToast('Item name is required', 'warning'); return; }
+  if (qty <= 0 || rate <= 0) { showToast('Quantity and rate must be greater than 0', 'warning'); return; }
+
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('project_id', pid);
+  fd.append('item_name', item);
+  fd.append('supply_category', catVal);
+  fd.append('board_type', item);
+  fd.append('board_thickness', thickVal);
+  fd.append('board_size', '');
+  fd.append('quantity', qty);
+  fd.append('unit', document.getElementById('editPurUnit').value || 'pcs');
+  fd.append('rate', rate);
+  fd.append('supplier', document.getElementById('editPurSupplier').value);
+  fd.append('notes', document.getElementById('editPurNotes').value);
+  fd.append('purchase_date', document.getElementById('editPurDateHidden').value || TODAY);
+
+  try {
+    const r = await fetch(BASE_PATH + '/api/purchases.php?action=update&project_id=' + pid, {method: 'POST', body: fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Purchase updated!', 'success');
+      closeModal('editPurchaseModal');
+      loadTodayPurchases();
+    } else {
+      showToast(d.message || 'Error updating purchase', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
 
 async function deletePurchase(id) {
@@ -330,6 +497,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 document.addEventListener('DOMContentLoaded', function() {
   SmartDate.initAll();
   SmartDate.setDateValue(document.getElementById('qpDate'), TODAY);
+  SmartDate.setDateValue(document.getElementById('editPurDate'), TODAY);
 });
 </script>
 

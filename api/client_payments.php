@@ -42,9 +42,15 @@ try {
             $date   = $_POST['payment_date'] ?? date('Y-m-d');
             $method = $_POST['payment_method'] ?? 'Cash';
             $notes  = trim($_POST['notes'] ?? '');
+            $new_pid = intval($_POST['new_project_id'] ?? $_POST['project_id'] ?? $project_id);
             if (!$id || $amount <= 0) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }
-            $stmt = $pdo->prepare("UPDATE app_client_payments SET amount=?,payment_date=?,payment_method=?,notes=?,updated_at=NOW() WHERE id=? AND project_id=? AND is_deleted=0");
-            $stmt->execute([$amount,$date,$method,$notes,$id,$project_id]);
+            if ($new_pid > 0) {
+                $stmt = $pdo->prepare("UPDATE app_client_payments SET project_id=?,amount=?,payment_date=?,payment_method=?,notes=?,updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$new_pid,$amount,$date,$method,$notes,$id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE app_client_payments SET amount=?,payment_date=?,payment_method=?,notes=?,updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$amount,$date,$method,$notes,$id]);
+            }
             echo json_encode(['success'=>true,'message'=>'Payment updated.']);
             break;
 

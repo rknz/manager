@@ -7605,4 +7605,13 @@ textarea {
   padding: 3px 10px;
   border-radius: 9999px;
 }
-
+
+
+.hide-thickness .fb-col-thick,
+.hide-thickness .fb-thick-col,
+.modal-overlay.hide-thickness .fb-col-thick,
+.modal-overlay.hide-thickness .fb-thick-col,
+.final-bill-modal.hide-thickness .fb-col-thick,
+.final-bill-modal.hide-thickness .fb-thick-col {
+  display: none !important;
+}

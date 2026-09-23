@@ -302,14 +302,32 @@ async function openFinalBillForProject(projectId, projectName) {
   openModal('generateFinalBillModal');
 }
 
+function updateThicknessVisibility() {
+  const modal = document.getElementById('generateFinalBillModal');
+  const type = document.getElementById('fbType') ? document.getElementById('fbType').value : 'contractor';
+  const targetSel = document.getElementById('fbTarget');
+  const opt = targetSel && targetSel.selectedIndex >= 0 ? targetSel.options[targetSel.selectedIndex] : null;
+  const isCarpenter = opt ? (opt.getAttribute('data-is-carpenter') === '1') : false;
+
+  if (modal) {
+    if (type === 'contractor' && isCarpenter) {
+      modal.classList.remove('hide-thickness');
+    } else {
+      modal.classList.add('hide-thickness');
+    }
+  }
+}
+
 async function loadFbTargets() {
   const type = document.getElementById('fbType').value;
   const targetSel = document.getElementById('fbTarget');
   targetSel.innerHTML = '<option value="">-- Loading... --</option>';
   
+  const pid = typeof currentProjectId !== 'undefined' ? currentProjectId : (document.getElementById('fbProjectId') ? document.getElementById('fbProjectId').value : 0);
+
   try {
     if (type === 'contractor') {
-      const r = await fetch(BASE_PATH + '/api/billing.php?action=list_project_contractors&project_id=' + currentProjectId);
+      const r = await fetch(BASE_PATH + '/api/billing.php?action=list_project_contractors&project_id=' + pid);
       const d = await r.json();
       let list = d.data || [];
       if (!list.length) {
@@ -317,16 +335,25 @@ async function loadFbTargets() {
         const d2 = await r2.json();
         list = d2.data || [];
       }
-      targetSel.innerHTML = '<option value="">-- Select Contractor --</option>' + list.map(c => `<option value="${c.contractor_id || c.id}">${esc(c.name)} (${esc(c.trade || 'Contractor')})</option>`).join('');
+      targetSel.innerHTML = '<option value="">-- Select Contractor --</option>' + list.map(c => {
+        const trade = c.trade || 'Contractor';
+        const tradeLower = trade.toLowerCase();
+        const isCarpenter = (tradeLower.includes('carpenter') || tradeLower.includes('wood') || tradeLower.includes('???'));
+        return `<option value="${c.contractor_id || c.id}" data-trade="${esc(trade)}" data-is-carpenter="${isCarpenter ? '1' : '0'}">${esc(c.name)} (${esc(trade)})</option>`;
+      }).join('');
     } else {
       const r = await fetch(BASE_PATH + '/api/workers.php?action=list');
       const d = await r.json();
       const list = d.data || [];
-      targetSel.innerHTML = '<option value="">-- Select Worker --</option>' + list.map(w => `<option value="${w.id}">${esc(w.name)} (${esc(w.trade || 'Worker')})</option>`).join('');
+      targetSel.innerHTML = '<option value="">-- Select Worker --</option>' + list.map(w => {
+        const trade = w.trade || 'Worker';
+        return `<option value="${w.id}" data-trade="${esc(trade)}" data-is-carpenter="0">${esc(w.name)} (${esc(trade)})</option>`;
+      }).join('');
     }
   } catch(e) {
     targetSel.innerHTML = '<option value="">-- Error loading --</option>';
   }
+  updateThicknessVisibility();
 }
 
 async function fetchFinalBillData(targetId) {
@@ -360,7 +387,8 @@ async function fetchFinalBillData(targetId) {
     } catch(e) {}
   } else {
     try {
-      const r = await fetch(BASE_PATH + '/api/billing.php?action=get_worker_bill_data&project_id=' + currentProjectId + '&worker_id=' + targetId);
+      const pid = (typeof currentProjectId !== 'undefined' && currentProjectId) ? currentProjectId : (typeof PID !== 'undefined' ? PID : (document.getElementById('fbProjectId') ? document.getElementById('fbProjectId').value : 0));
+      const r = await fetch(BASE_PATH + '/api/billing.php?action=get_worker_bill_data&project_id=' + pid + '&worker_id=' + targetId);
       const d = await r.json();
       if (d.success && d.items && d.items.length > 0) {
         d.items.forEach(item => {
@@ -368,7 +396,9 @@ async function fetchFinalBillData(targetId) {
           hasItems = true;
         });
       }
-    } catch(e) {}
+    } catch(e) {
+      console.error('Worker bill fetch error:', e);
+    }
   }
 
   if (!hasItems) {

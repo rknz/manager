@@ -119,9 +119,15 @@ try {
             $who_paid = trim($_POST['who_paid'] ?? '');
             $who_recv = trim($_POST['who_received'] ?? '');
             $notes  = trim($_POST['notes'] ?? '');
+            $new_pid = intval($_POST['new_project_id'] ?? $_POST['project_id'] ?? $project_id);
             if (!$id || !$wid || $amount <= 0) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }
-            $stmt = $pdo->prepare("UPDATE app_worker_payments SET worker_id=?,amount=?,payment_date=?,payment_method=?,who_paid=?,who_received=?,notes=?,updated_at=NOW() WHERE id=? AND project_id=? AND is_deleted=0");
-            $stmt->execute([$wid,$amount,$date,$method,$who_paid,$who_recv,$notes,$id,$project_id]);
+            if ($new_pid > 0) {
+                $stmt = $pdo->prepare("UPDATE app_worker_payments SET project_id=?, worker_id=?, amount=?, payment_date=?, payment_method=?, who_paid=?, who_received=?, notes=?, updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$new_pid, $wid, $amount, $date, $method, $who_paid, $who_recv, $notes, $id]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE app_worker_payments SET worker_id=?, amount=?, payment_date=?, payment_method=?, who_paid=?, who_received=?, notes=?, updated_at=NOW() WHERE id=? AND is_deleted=0");
+                $stmt->execute([$wid, $amount, $date, $method, $who_paid, $who_recv, $notes, $id]);
+            }
             echo json_encode(['success'=>true,'message'=>'Payment updated.']);
             break;
 
