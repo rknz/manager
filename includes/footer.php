@@ -69,12 +69,12 @@
 </div><!-- /app-layout -->
 
 <!-- CORE SCRIPTS -->
-<script src="<?= $basePath ?>/assets/js/utils/date-parser.js"></script>
+<script src="<?= $basePath ?>/assets/js/utils/date-parser.js?v=2.9.0"></script>
 <script src="<?= $basePath ?>/assets/js/utils/form-nav.js"></script>
 <script src="<?= $basePath ?>/assets/js/utils/password-confirm.js"></script>
 <script src="<?= $basePath ?>/assets/js/right-panel.js?v=2.1.0"></script>
 <script src="<?= $basePath ?>/assets/js/attendance-entry.js?v=2.1.0"></script>
-<script src="<?= $basePath ?>/assets/js/app.js?v=2.1.0"></script>
+<script src="<?= $basePath ?>/assets/js/app.js?v=2.2.1"></script>
 <?php if (!empty($extraScripts)) foreach ($extraScripts as $s): ?>
 <?php if ($s !== 'attendance-entry.js'): ?>
 <script src="<?= $basePath ?>/assets/js/<?= $s ?>?v=2.1.0"></script>

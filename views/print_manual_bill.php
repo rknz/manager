@@ -49,16 +49,22 @@ $items = json_decode($bill['bill_data'], true) ?: [];
         .controls { text-align: center; margin-bottom: 20px; }
         .btn { background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-family: inherit; font-weight: 600; cursor: pointer; }
         @media print {
-            body { background: #fff; padding: 0; }
-            .pad-container { box-shadow: none; border-radius: 0; padding: 0 12mm; max-width: 100%; }
-            .controls { display: none !important; }
+            body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+            .pad-container { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+            .controls, .no-print { display: none !important; }
             thead { display: table-header-group; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             table { break-inside: auto; }
             .no-break, .totals-box, .section-title, .header, .info-grid { break-inside: avoid; page-break-inside: avoid; }
         }
     </style>
-    <style id="pageRules">@media print { @page { size: A4; margin: 0; } .pad-container { padding: 2.17in 12mm 1in 12mm !important; } }</style>
+    <style id="pageRules">
+        @media print {
+            @page { size: A4; margin-top: 2.17in; margin-bottom: 1in; margin-left: 12mm; margin-right: 12mm; }
+            body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            .pad-container { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border-radius: 0 !important; }
+        }
+    </style>
 </head>
 <body>
 <div class="controls">
@@ -163,9 +169,19 @@ const numToWords = (num) => {
     return str.trim() ? str.trim() + ' Taka Only' : 'Zero Taka Only';
 };
 function updateMargins() {
-    let top = document.getElementById('marginTop').value || 0;
-    let bottom = document.getElementById('marginBottom').value || 0;
-    document.getElementById('pageRules').textContent = '@media print { @page { size: A4; margin: 0; } .pad-container { padding: ' + (parseFloat(top)||0) + 'in 12mm ' + (parseFloat(bottom)||0) + 'in 12mm !important; } }';
+    let top = parseFloat(document.getElementById('marginTop').value) || 0;
+    let bottom = parseFloat(document.getElementById('marginBottom').value) || 0;
+    let pad = document.querySelector('.pad-container');
+    if (pad) {
+        pad.style.paddingTop = top + 'in';
+        pad.style.paddingBottom = bottom + 'in';
+    }
+    document.getElementById('pageRules').textContent = 
+        '@media print { ' +
+        '  @page { size: A4; margin-top: ' + top + 'in; margin-bottom: ' + bottom + 'in; margin-left: 12mm; margin-right: 12mm; } ' +
+        '  body { margin: 0 !important; padding: 0 !important; background: #fff !important; } ' +
+        '  .pad-container { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border-radius: 0 !important; } ' +
+        '}';
 }
 
 window.onload = function() {

@@ -1,6 +1,7 @@
 <?php
 // views/login.php
 require_once __DIR__ . '/../includes/auth.php';
+$basePath = $basePath ?? '';
 if (isLoggedIn()) { header('Location: ' . $basePath . '/dashboard'); exit; }
 
 $error = '';
@@ -10,13 +11,14 @@ $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTT
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $u = trim($_POST['username'] ?? '');
     $p = $_POST['password'] ?? '';
-    $stmt = $pdo->prepare("SELECT id,username,password_hash,role FROM app_users WHERE username=? AND is_active=1");
+    $stmt = $pdo->prepare("SELECT id,username,password_hash,role,photo FROM app_users WHERE username=? AND is_active=1");
     $stmt->execute([$u]);
     $user = $stmt->fetch();
     if ($user && password_verify($p, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['photo'] = $user['photo'] ?? null;
         $_SESSION['last_activity'] = time();
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -39,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login &mdash; Lily Interiors Profix</title>
+<title>Login - Project Management of LILY INTERIORSBD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Potta+One&family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&family=Noto+Sans+Bengali:wght@400;600;700&family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">

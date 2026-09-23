@@ -3,7 +3,7 @@ require_once __DIR__ . '/../includes/auth.php';
 requireLogin();
 $pageTitle='Settings';$activeNav='settings';
 $settings_rows=$pdo->query("SELECT setting_key,setting_value FROM app_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
-$users=$pdo->query("SELECT id,username,role,is_active,created_at FROM app_users ORDER BY id")->fetchAll();
+$users=$pdo->query("SELECT id,username,role,photo,is_active,created_at FROM app_users WHERE is_deleted=0 ORDER BY id")->fetchAll();
 include __DIR__ . '/../includes/header.php';
 ?>
 <div class="tabs">
@@ -33,15 +33,40 @@ include __DIR__ . '/../includes/header.php';
   <div class="filter-bar"><button class="btn btn-primary btn-sm" onclick="openModal('addUserModal')">+ Add User</button></div>
   <div class="table-wrapper card">
     <table class="data-table">
-      <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead>
+      <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Created</th><th style="text-align:right;">Actions</th></tr></thead>
       <tbody>
-        <?php foreach($users as $u): ?>
+        <?php foreach($users as $u): 
+          $initial = strtoupper(substr($u['username'], 0, 1));
+          $photo = !empty($u['photo']) ? $basePath . '/' . htmlspecialchars($u['photo']) : null;
+        ?>
         <tr>
-          <td><strong><?=htmlspecialchars($u['username'])?></strong></td>
-          <td><span class="badge <?=$u['role']==='admin'?'badge-primary':'badge-neutral'?>"><?=ucfirst($u['role'])?></span></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <?php if($photo): ?>
+                <img src="<?=$photo?>" alt="<?=htmlspecialchars($u['username'])?>" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border-color,#e2e8f0);" onerror="this.outerHTML='<div class=\'user-avatar-fallback\'><span><?=$initial?></span></div>'">
+              <?php else: ?>
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#9C1F24,#7A1A1E);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 2px 6px rgba(156,31,36,0.25);">
+                  <span><?=$initial?></span>
+                </div>
+              <?php endif; ?>
+              <div>
+                <strong><?=htmlspecialchars($u['username'])?></strong>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge <?=$u['role']==='admin'||$u['role']==='owner'?'badge-primary':'badge-neutral'?>"><?=ucfirst($u['role'])?></span></td>
           <td><span class="badge <?=$u['is_active']?'badge-success':'badge-neutral'?>"><?=$u['is_active']?'Active':'Inactive'?></span></td>
           <td><?=date('d M Y',strtotime($u['created_at']))?></td>
-          <td><?php if($u['id']!=$_SESSION['user_id']): ?><button class="btn btn-ghost btn-sm" onclick="toggleUser(<?=$u['id']?>,<?=$u['is_active']?>)"><?=$u['is_active']?'Deactivate':'Activate'?></button><?php endif; ?></td>
+          <td style="text-align:right;">
+            <div style="display:inline-flex;gap:6px;align-items:center;">
+              <?php if($u['id']!=$_SESSION['user_id']): ?>
+                <button class="btn btn-ghost btn-sm" onclick="toggleUser(<?=$u['id']?>,<?=$u['is_active']?>)"><?=$u['is_active']?'Deactivate':'Activate'?></button>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger,#dc2626);" onclick="delUser(<?=$u['id']?>,'<?=htmlspecialchars(addslashes($u['username']))?>')" title="Delete User">&#128465;</button>
+              <?php else: ?>
+                <span class="text-muted" style="font-size:12px;">(Current User)</span>
+              <?php endif; ?>
+            </div>
+          </td>
         </tr>
         <?php endforeach; ?>
       </tbody>
@@ -79,7 +104,8 @@ include __DIR__ . '/../includes/header.php';
   <div class="modal-body">
     <div class="form-group"><label class="form-label">Username <span class="required">*</span></label><input type="text" id="nuName" class="form-input"></div>
     <div class="form-group"><label class="form-label">Password <span class="required">*</span></label><input type="password" id="nuPass" class="form-input"></div>
-    <div class="form-group"><label class="form-label">Role</label><select id="nuRole" class="form-select"><option value="user">User</option><option value="admin">Admin</option></select></div>
+    <div class="form-group"><label class="form-label">Role</label><select id="nuRole" class="form-select"><option value="manager">Manager</option><option value="owner">Owner</option></select></div>
+    <div class="form-group"><label class="form-label">User Photo</label><input type="file" id="nuPhoto" class="form-input" accept="image/*"></div>
   </div>
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addUserModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="addUser()">Create User</button></div>
 </div></div>
@@ -107,8 +133,30 @@ async function addUser(){
   const name=document.getElementById('nuName').value.trim(),pass=document.getElementById('nuPass').value;
   if(!name||!pass){showToast('Username and password required','warning');return;}
   const fd=new FormData();fd.append('username',name);fd.append('password',pass);fd.append('role',document.getElementById('nuRole').value);
+  const photoFile=document.getElementById('nuPhoto').files[0];
+  if(photoFile) fd.append('photo', photoFile);
   const r=await fetch(BASE_PATH + '/api/index.php?action=create_user',{method:'POST',body:fd});const d=await r.json();
   if(d.success){showToast('User created!','success');closeModal('addUserModal');location.reload();}else showToast(d.message||'Error','error');
+}
+function delUser(id, username){
+  PasswordConfirm.require(`Delete user "${username}"?`, async function(){
+    try {
+      const r = await fetch(BASE_PATH + '/api/index.php?action=delete_user', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+      });
+      const d = await r.json();
+      if(d.success){
+        showToast(d.message || 'User deleted', 'success');
+        setTimeout(() => location.reload(), 500);
+      } else {
+        showToast(d.message || 'Failed to delete user', 'error');
+      }
+    } catch(e) {
+      showToast('Error deleting user', 'error');
+    }
+  });
 }
 async function toggleUser(id,isActive){
   const fd=new FormData();fd.append('id',id);fd.append('is_active',isActive?0:1);

@@ -78,6 +78,26 @@ switch ($path) {
         requireLogin();
         require __DIR__ . '/views/projects.php';
         break;
+    case '/estimates':
+        requireLogin();
+        require __DIR__ . '/views/estimates.php';
+        break;
+    case '/estimate-builder':
+    case '/estimates/create':
+    case '/estimates/edit':
+        requireLogin();
+        require __DIR__ . '/views/estimate-builder.php';
+        break;
+    case '/estimate-view':
+    case '/estimates/view':
+        requireLogin();
+        require __DIR__ . '/views/estimate-view.php';
+        break;
+    case '/estimate-catalog':
+    case '/estimates/catalog':
+        requireLogin();
+        require __DIR__ . '/views/estimate-catalog.php';
+        break;
     case '/project-detail':
         requireLogin();
         require __DIR__ . '/views/project-detail.php';

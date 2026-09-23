@@ -9,13 +9,17 @@ header('Content-Type: application/json');
 $action     = $_GET['action'] ?? '';
 $project_id = intval($_GET['project_id'] ?? $_POST['project_id'] ?? 0);
 
-if (empty($project_id)) { echo json_encode(['success'=>false,'message'=>'Project ID required.']); exit; }
+if (empty($project_id) && $action !== 'list') { echo json_encode(['success'=>false,'message'=>'Project ID required.']); exit; }
 
 try {
     switch ($action) {
         case 'list':
-            $stmt = $pdo->prepare("SELECT * FROM app_client_payments WHERE project_id=? AND is_deleted=0 ORDER BY payment_date DESC, id DESC");
-            $stmt->execute([$project_id]);
+            if ($project_id) {
+                $stmt = $pdo->prepare("SELECT cp.*, p.name as project_name FROM app_client_payments cp JOIN app_projects p ON cp.project_id=p.id WHERE cp.project_id=? AND cp.is_deleted=0 ORDER BY cp.payment_date DESC, cp.id DESC");
+                $stmt->execute([$project_id]);
+            } else {
+                $stmt = $pdo->query("SELECT cp.*, p.name as project_name FROM app_client_payments cp JOIN app_projects p ON cp.project_id=p.id WHERE cp.is_deleted=0 ORDER BY cp.payment_date DESC, cp.id DESC");
+            }
             $rows  = $stmt->fetchAll();
             $total = array_sum(array_column($rows, 'amount'));
             echo json_encode(['success'=>true,'data'=>$rows,'total'=>$total]);
@@ -49,7 +53,11 @@ try {
             $data = json_decode(file_get_contents('php://input'), true) ?? [];
             $id   = intval($data['id'] ?? 0);
             if (!$id) { echo json_encode(['success'=>false,'message'=>'ID required.']); exit; }
-            $pdo->prepare("UPDATE app_client_payments SET is_deleted=1 WHERE id=? AND project_id=?")->execute([$id,$project_id]);
+            if ($project_id) {
+                $pdo->prepare("UPDATE app_client_payments SET is_deleted=1 WHERE id=? AND project_id=?")->execute([$id,$project_id]);
+            } else {
+                $pdo->prepare("UPDATE app_client_payments SET is_deleted=1 WHERE id=?")->execute([$id]);
+            }
             echo json_encode(['success'=>true,'message'=>'Payment deleted.']);
             break;
 

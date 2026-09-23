@@ -106,16 +106,22 @@ $balance_due = $grand_total - $total_paid;
         .controls { text-align: center; margin-bottom: 20px; }
         .btn { background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-family: inherit; font-weight: 600; cursor: pointer; }
         @media print {
-            body { background: #fff; padding: 0; }
-            .pad-container { box-shadow: none; border-radius: 0; padding: 0 12mm; max-width: 100%; }
-            .controls { display: none !important; }
+            body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+            .pad-container { box-shadow: none !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
+            .controls, .no-print { display: none !important; }
             thead { display: table-header-group; }
             tr { break-inside: avoid; page-break-inside: avoid; }
             table { break-inside: auto; }
             .no-break, .totals-box, .section-title, .header, .info-grid, .ctable { break-inside: avoid; page-break-inside: avoid; }
         }
     </style>
-    <style id="pageRules">@media print { @page { size: A4; margin: 0; } .pad-container { padding: 2.17in 12mm 1in 12mm !important; } }</style>
+    <style id="pageRules">
+        @media print {
+            @page { size: A4; margin-top: 2.17in; margin-bottom: 1in; margin-left: 12mm; margin-right: 12mm; }
+            body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+            .pad-container { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border-radius: 0 !important; }
+        }
+    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>const BASE_PATH = '<?= dirname($_SERVER['SCRIPT_NAME']) === "\\" || dirname($_SERVER['SCRIPT_NAME']) === "/" ? "" : dirname($_SERVER['SCRIPT_NAME']) ?>';</script>
 </head>
@@ -159,22 +165,24 @@ $balance_due = $grand_total - $total_paid;
         <thead>
             <tr>
                 <th>Description</th>
-                <th class="text-right">Qty</th>
-                <th class="text-right">Rate (Tk)</th>
-                <th class="text-right">Amount (Tk)</th>
+                <th style="text-align:center; width:110px;">Thickness</th>
+                <th class="text-right" style="width:70px;">Qty</th>
+                <th class="text-right" style="width:100px;">Rate (Tk)</th>
+                <th class="text-right" style="width:110px;">Amount (Tk)</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($items as $item): ?>
             <tr>
-                <td><?= htmlspecialchars($item['description']) ?></td>
-                <td class="text-right"><?= $item['quantity'] ?></td>
-                <td class="text-right"><?= number_format($item['rate'], 2) ?></td>
-                <td class="text-right"><?= number_format($item['total'], 2) ?></td>
+                <td><?= htmlspecialchars($item['description'] ?? '') ?></td>
+                <td style="text-align:center;"><?= !empty($item['thickness']) ? htmlspecialchars($item['thickness']) : '-' ?></td>
+                <td class="text-right"><?= htmlspecialchars((string)($item['qty'] ?? $item['quantity'] ?? '')) ?></td>
+                <td class="text-right"><?= number_format(floatval($item['rate'] ?? 0), 2) ?></td>
+                <td class="text-right"><?= number_format(floatval($item['total'] ?? 0), 2) ?></td>
             </tr>
             <?php endforeach; ?>
-            <?php if(!empty($items)): ?>
-            <tr><td colspan="4" style="text-align:center;">No items provided.</td></tr>
+            <?php if(empty($items)): ?>
+            <tr><td colspan="5" style="text-align:center;">No items provided.</td></tr>
             <?php endif; ?>
         </tbody>
     </table>
@@ -198,7 +206,7 @@ $balance_due = $grand_total - $total_paid;
                 </tr>
                 <?php foreach($crewRows as $cr): if($cr['is_contractor']) continue; ?>
                 <tr>
-                    <td><?= htmlspecialchars($cr['name']) ?> <span style="color:#6b7280;">(hired worker)</span></td>
+                    <td><?= htmlspecialchars($cr['name']) ?> <span style="color:#6b7280;">(Crew Labor)</span></td>
                     <td class="text-right"><?= number_format($cr['paid'], 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -255,10 +263,21 @@ const numToWords = (num) => {
     return str.trim() ? str.trim() + ' Taka Only' : 'Zero Taka Only';
 };
 function updateMargins() {
-    let top = document.getElementById('marginTop').value || 0;
-    let bottom = document.getElementById('marginBottom').value || 0;
-    document.getElementById('pageRules').textContent = '@media print { @page { size: A4; margin: 0; } .pad-container { padding: ' + (parseFloat(top)||0) + 'in 12mm ' + (parseFloat(bottom)||0) + 'in 12mm !important; } }';
+    let top = parseFloat(document.getElementById('marginTop').value) || 0;
+    let bottom = parseFloat(document.getElementById('marginBottom').value) || 0;
+    let pad = document.querySelector('.pad-container');
+    if (pad) {
+        pad.style.paddingTop = top + 'in';
+        pad.style.paddingBottom = bottom + 'in';
+    }
+    document.getElementById('pageRules').textContent = 
+        '@media print { ' +
+        '  @page { size: A4; margin-top: ' + top + 'in; margin-bottom: ' + bottom + 'in; margin-left: 12mm; margin-right: 12mm; } ' +
+        '  body { margin: 0 !important; padding: 0 !important; background: #fff !important; } ' +
+        '  .pad-container { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; border-radius: 0 !important; } ' +
+        '}';
 }
+
 window.onload = function() {
     updateMargins();
     document.getElementById('wordsOut').textContent = numToWords(Math.round(<?= $grand_total ?>));
@@ -271,6 +290,10 @@ function saveBillPdf() {
     const element = document.querySelector('.pad-container');
     const topMm = (parseFloat(document.getElementById('marginTop').value)||0)*25.4;
     const bottomMm = (parseFloat(document.getElementById('marginBottom').value)||0)*25.4;
+    const prevPt = element.style.paddingTop;
+    const prevPb = element.style.paddingBottom;
+    element.style.paddingTop = '0px';
+    element.style.paddingBottom = '0px';
     const opt = {
         margin:       [topMm, 10, bottomMm, 10],
         filename:     'bill.pdf',

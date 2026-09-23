@@ -16,7 +16,7 @@ if ($action === 'login' && $method === 'POST') {
         echo json_encode(['success' => false, 'message' => 'Username and password are required.']); exit;
     }
     try {
-        $stmt = $pdo->prepare("SELECT id, username, password_hash, role, is_active FROM app_users WHERE username = ? OR email = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password_hash, role, photo, is_active FROM app_users WHERE username = ? OR email = ?");
         $stmt->execute([$usernameOrEmail, $usernameOrEmail]);
         $user = $stmt->fetch();
         if ($user && password_verify($password, $user['password_hash'])) {
@@ -24,6 +24,7 @@ if ($action === 'login' && $method === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
+            $_SESSION['photo'] = $user['photo'] ?? null;
             $bp = dirname($_SERVER['SCRIPT_NAME'], 2);
             if ($bp === '\\' || $bp === '/' || $bp === '.') $bp = '';
             echo json_encode(['success' => true, 'redirect' => $bp . '/dashboard']);
@@ -167,10 +168,11 @@ if ($action === 'get_dashboard_stats' && $method === 'GET') {
         $total_due = max(0, $total_billed - $total_advances);
 
         // Recent projects (4, with image)
-        $stmtRP = $pdo->query("SELECT id, name, client_name, client_address, status, estimated_budget, project_image, start_date FROM app_projects WHERE is_deleted=0 ORDER BY id DESC LIMIT 4");
+        $stmtRP = $pdo->query("SELECT id, name, client_name, client_address, status, estimated_budget, project_image, start_date, end_date, created_at FROM app_projects WHERE is_deleted=0 ORDER BY id DESC LIMIT 4");
         $recent_projects = $stmtRP->fetchAll(PDO::FETCH_ASSOC);
 
-        // Add spend % per project
+        // Add spend and timeline progress per project
+        $todayTs = strtotime(date('Y-m-d'));
         foreach ($recent_projects as &$p) {
             $pid = $p['id'];
             $sMat = $pdo->prepare("SELECT COALESCE(SUM(total),0) FROM app_supply_purchases WHERE project_id=? AND is_deleted=0");
@@ -183,9 +185,33 @@ if ($action === 'get_dashboard_stats' && $method === 'GET') {
             $sLab->execute([$pid]); $labSpent = (float)$sLab->fetchColumn();
 
             $spent = $matSpent + $advSpent + $labSpent;
-            $budget = (float)($p['estimated_budget'] ?? 0);
-            $p['progress'] = $budget > 0 ? min(100, round(($spent / $budget) * 100)) : 0;
             $p['spent'] = $spent;
+
+            // Date-to-date timeline progress
+            $pct = 0;
+            if (strtolower($p['status'] ?? '') === 'completed') {
+                $pct = 100;
+            } else {
+                $startStr = !empty($p['start_date']) ? substr($p['start_date'], 0, 10) : (!empty($p['created_at']) ? substr($p['created_at'], 0, 10) : null);
+                $endStr   = !empty($p['end_date']) ? substr($p['end_date'], 0, 10) : null;
+                if ($startStr && $endStr) {
+                    $startTs = strtotime($startStr);
+                    $endTs   = strtotime($endStr);
+                    if ($startTs && $endTs) {
+                        if ($endTs <= $startTs) {
+                            $pct = $todayTs >= $endTs ? 100 : 0;
+                        } elseif ($todayTs <= $startTs) {
+                            $pct = 0;
+                        } elseif ($todayTs >= $endTs) {
+                            $pct = 100;
+                        } else {
+                            $pct = (int)round((($todayTs - $startTs) / ($endTs - $startTs)) * 100);
+                            $pct = max(0, min(100, $pct));
+                        }
+                    }
+                }
+            }
+            $p['progress'] = $pct;
         }
         unset($p);
 
@@ -284,13 +310,74 @@ if ($action === 'create_user') {
     $username = trim($_POST['username'] ?? '');
     $email    = trim($_POST['email'] ?? ($username . '@lilyinteriorsbd.com'));
     $password = $_POST['password'] ?? '';
-    $role     = in_array($_POST['role']??'user',['admin','user','owner','manager']) ? $_POST['role'] : 'user';
+    $rawRole  = trim($_POST['role'] ?? 'manager');
+    if ($rawRole === 'admin') $role = 'owner';
+    elseif ($rawRole === 'user') $role = 'manager';
+    elseif (in_array($rawRole, ['owner', 'manager'])) $role = $rawRole;
+    else $role = 'manager';
     if (!$username || !$password) { echo json_encode(['success'=>false,'message'=>'Username and password required.']); exit; }
+
+    // Auto-clean any legacy soft-deleted record with this username or email to avoid unique key conflict
+    $pdo->prepare("DELETE FROM app_users WHERE (username=? OR email=?) AND is_deleted=1")->execute([$username, $email]);
+
     $dup = $pdo->prepare("SELECT id FROM app_users WHERE username=? OR email=?"); $dup->execute([$username, $email]);
     if ($dup->fetch()) { echo json_encode(['success'=>false,'message'=>'Username or email already exists.']); exit; }
+    
+    // Photo upload handling
+    $photoPath = null;
+    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['photo'];
+        $mime_map = ['image/jpeg'=>'jpg', 'image/png'=>'png', 'image/webp'=>'webp', 'image/gif'=>'gif'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        if (isset($mime_map[$mime])) {
+            $dir = __DIR__ . '/../uploads/users/';
+            if (!is_dir($dir)) mkdir($dir, 0755, true);
+            $ext = $mime_map[$mime];
+            $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            if (move_uploaded_file($file['tmp_name'], $dir . $filename)) {
+                $photoPath = 'uploads/users/' . $filename;
+            }
+        }
+    }
+
     $hash = password_hash($password, PASSWORD_DEFAULT);
-    $pdo->prepare("INSERT INTO app_users (username,email,password_hash,role,is_active,created_at) VALUES (?,?,?,?,1,NOW())")->execute([$username,$email,$hash,$role]);
+    $pdo->prepare("INSERT INTO app_users (username,email,password_hash,role,photo,is_active,is_deleted,created_at) VALUES (?,?,?,?,?,1,0,NOW())")->execute([$username,$email,$hash,$role,$photoPath]);
     echo json_encode(['success'=>true,'message'=>'User created.']); exit;
+}
+if ($action === 'delete_user') {
+    requireLogin();
+    if (!isset($_SESSION['admin_auth_time']) || (time() - $_SESSION['admin_auth_time'] > 300)) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized - Password verification required.']);
+        exit;
+    }
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = intval($data['id'] ?? $_POST['id'] ?? 0);
+    if (!$id) {
+        echo json_encode(['success' => false, 'message' => 'User ID required.']);
+        exit;
+    }
+    if ($id == ($_SESSION['user_id'] ?? 0)) {
+        echo json_encode(['success' => false, 'message' => 'You cannot delete your own account.']);
+        exit;
+    }
+    $stmt = $pdo->prepare("SELECT id, username, photo FROM app_users WHERE id = ?");
+    $stmt->execute([$id]);
+    $userToDelete = $stmt->fetch();
+    if (!$userToDelete) {
+        echo json_encode(['success' => false, 'message' => 'User not found.']);
+        exit;
+    }
+    if (!empty($userToDelete['photo'])) {
+        $photoFile = __DIR__ . '/../' . ltrim($userToDelete['photo'], '/');
+        if (file_exists($photoFile)) {
+            @unlink($photoFile);
+        }
+    }
+    $pdo->prepare("DELETE FROM app_users WHERE id = ?")->execute([$id]);
+    echo json_encode(['success' => true, 'message' => 'User "' . $userToDelete['username'] . '" deleted successfully.']);
+    exit;
 }
 if ($action === 'toggle_user') {
     requireLogin();
@@ -335,6 +422,40 @@ if ($action === 'change_password') {
     $hash = password_hash($new, PASSWORD_DEFAULT);
     $pdo->prepare("UPDATE app_users SET password_hash=? WHERE id=?")->execute([$hash,$_SESSION['user_id']]);
     echo json_encode(['success'=>true,'message'=>'Password changed successfully.']); exit;
+}
+if ($action === 'upload_avatar') {
+    requireLogin();
+    if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'message' => 'No image uploaded or upload error.']);
+        exit;
+    }
+    $file = $_FILES['photo'];
+    $allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    if (!in_array($mime, $allowed)) {
+        echo json_encode(['success' => false, 'message' => 'Only JPG, PNG, GIF, or WEBP images allowed.']);
+        exit;
+    }
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!$ext) $ext = 'jpg';
+    $dir = __DIR__ . '/../uploads/users';
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    $target = $dir . '/' . $filename;
+    if (move_uploaded_file($file['tmp_name'], $target)) {
+        $photoPath = 'uploads/users/' . $filename;
+        $userId = $_SESSION['user_id'] ?? 0;
+        if ($userId) {
+            $pdo->prepare("UPDATE app_users SET photo = ?, updated_at = NOW() WHERE id = ?")->execute([$photoPath, $userId]);
+            $_SESSION['photo'] = $photoPath;
+            echo json_encode(['success' => true, 'photo' => $photoPath, 'message' => 'Avatar updated successfully.']);
+            exit;
+        }
+    }
+    echo json_encode(['success' => false, 'message' => 'Failed to save avatar image.']);
+    exit;
 }
 
 http_response_code(404);

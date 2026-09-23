@@ -67,6 +67,7 @@ include __DIR__ . '/../includes/header.php';
 .health-card.tone-muted .hc-icon { background:#F3F4F6; }
 .stat-note { font-size:12px; color:#9CA3AF; margin-top:6px; }
 @media print {
+  @page { size: A4; margin: 15mm; }
   body * { visibility: hidden; }
   #rptPurchases, #rptPurchases * { visibility: visible; }
   #rptPurchases { position: absolute; left: 0; top: 0; width: 100%; }

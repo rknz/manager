@@ -8,7 +8,7 @@ header('Content-Type: application/json');
 $action     = $_GET['action'] ?? '';
 $project_id = intval($_GET['project_id'] ?? $_POST['project_id'] ?? 0);
 
-if (empty($project_id)) { echo json_encode(['success'=>false,'message'=>'Project ID required.']); exit; }
+if (empty($project_id) && $action !== 'list_payments') { echo json_encode(['success'=>false,'message'=>'Project ID required.']); exit; }
 
 try {
     switch ($action) {
@@ -128,11 +128,12 @@ try {
         case 'list_payments':
             $wid  = intval($_GET['worker_id'] ?? 0);
             $from = $_GET['from'] ?? null; $to = $_GET['to'] ?? null;
-            $sql = "SELECT p.*, w.name as worker_name FROM app_worker_payments p JOIN app_workers w ON p.worker_id=w.id WHERE p.project_id=? AND p.is_deleted=0";
-            $params = [$project_id];
-            if ($wid)   { $sql .= " AND p.worker_id=?";  $params[] = $wid; }
-            if ($from)  { $sql .= " AND p.payment_date>=?"; $params[] = $from; }
-            if ($to)    { $sql .= " AND p.payment_date<=?"; $params[] = $to; }
+            $sql = "SELECT p.*, w.name as worker_name, pr.name as project_name FROM app_worker_payments p JOIN app_workers w ON p.worker_id=w.id LEFT JOIN app_projects pr ON p.project_id=pr.id WHERE p.is_deleted=0";
+            $params = [];
+            if ($project_id) { $sql .= " AND p.project_id=?"; $params[] = $project_id; }
+            if ($wid)        { $sql .= " AND p.worker_id=?";  $params[] = $wid; }
+            if ($from)       { $sql .= " AND p.payment_date>=?"; $params[] = $from; }
+            if ($to)         { $sql .= " AND p.payment_date<=?"; $params[] = $to; }
             $sql .= " ORDER BY p.payment_date DESC, p.id DESC";
             $stmt = $pdo->prepare($sql); $stmt->execute($params);
             $rows = $stmt->fetchAll(); $total = array_sum(array_column($rows,'amount'));
@@ -144,7 +145,11 @@ try {
             $data = json_decode(file_get_contents('php://input'), true) ?? [];
             $id   = intval($data['id'] ?? 0);
             if (!$id) { echo json_encode(['success'=>false,'message'=>'ID required.']); exit; }
-            $pdo->prepare("UPDATE app_worker_payments SET is_deleted=1 WHERE id=? AND project_id=?")->execute([$id,$project_id]);
+            if ($project_id) {
+                $pdo->prepare("UPDATE app_worker_payments SET is_deleted=1 WHERE id=? AND project_id=?")->execute([$id,$project_id]);
+            } else {
+                $pdo->prepare("UPDATE app_worker_payments SET is_deleted=1 WHERE id=?")->execute([$id]);
+            }
             echo json_encode(['success'=>true,'message'=>'Payment deleted.']);
             break;
 

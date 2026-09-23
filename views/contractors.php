@@ -14,12 +14,7 @@ include __DIR__ . '/../includes/header.php';
   </div>
   <button class="btn btn-primary btn-sm" onclick="openModal('addContModal')">+ Add Contractor</button>
 </div>
-<div class="table-wrapper card">
-  <table class="data-table" id="contTable">
-    <thead><tr><th>Name</th><th>Trade</th><th>Phone</th><th>Address</th><th>Status</th><th></th></tr></thead>
-    <tbody id="contBody"></tbody>
-  </table>
-</div>
+<div class="contractors-grid" id="contGrid"></div>
 <div class="modal-overlay" id="addContModal"><div class="modal" data-form-nav>
   <div class="modal-header"><h3>+ Add Contractor</h3><div class="modal-close" onclick="closeModal('addContModal')">&times;</div></div>
   <div class="modal-body">
@@ -48,11 +43,68 @@ function fillTradeOpts(selId,val){const sel=document.getElementById(selId);sel.i
 async function loadContractors(){const r=await fetch(BASE_PATH + '/api/contractors.php?action=list');const d=await r.json();allConts=d.data||[];filterContractors();}
 function setFilter(btn,val){document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterActive=val;filterContractors();}
 function filterContractors(){
-  const q=(document.getElementById('contSearch').value||'').toLowerCase();
-  const rows=allConts.filter(c=>{const m=filterActive===''?true:c.is_active==filterActive;const mq=!q||c.name.toLowerCase().includes(q)||(c.trade||'').toLowerCase().includes(q);return m&&mq;});
-  const body=document.getElementById('contBody');
-  if(!rows.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No contractors found</td></tr>';return;}
-  body.innerHTML=rows.map(c=>`<tr><td><strong>${esc(c.name)}</strong></td><td>${esc(c.trade||'-')}</td><td>${esc(c.phone||'-')}</td><td>${esc(c.address||'-')}</td><td><span class="badge ${c.is_active?'badge-success':'badge-neutral'}">${c.is_active?'Active':'Inactive'}</span></td><td class="td-actions"><button class="btn btn-ghost btn-sm" onclick="openEdit(${c.id})">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delCont(${c.id})">&#10006;</button></td></tr>`).join('');
+  const q=(document.getElementById('contSearch').value||'').trim().toLowerCase();
+  const rows=allConts.filter(c=>{
+    const m=filterActive===''?true:c.is_active==filterActive;
+    const mq=!q||(c.name||'').toLowerCase().includes(q)||(c.trade||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q)||(c.address||'').toLowerCase().includes(q);
+    return m&&mq;
+  });
+  const grid=document.getElementById('contGrid');
+  if(!grid) return;
+
+  if(!rows.length){
+    grid.innerHTML='<div class="card" style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No contractors found</div>';
+    return;
+  }
+
+  grid.innerHTML=rows.map(c=>{
+    const initial = esc(c.name || 'C').charAt(0).toUpperCase();
+    return `
+    <div class="contractor-card">
+      <div class="cc-header">
+        <div class="cc-avatar">${initial}</div>
+        <div class="cc-title-box">
+          <div class="cc-name">${esc(c.name)}</div>
+          ${c.trade ? `<span class="badge badge-info cc-trade">${esc(c.trade)}</span>` : ''}
+        </div>
+        <span class="badge ${c.is_active ? 'badge-success' : 'badge-neutral'} cc-status">${c.is_active ? 'Active' : 'Inactive'}</span>
+      </div>
+
+      <div class="cc-details">
+        <div class="cc-detail-row">
+          <span class="cc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Phone:
+          </span>
+          ${c.phone ? `<a href="tel:${esc(c.phone)}" class="cc-val cc-phone">${esc(c.phone)}</a>` : `<span class="cc-val cc-empty">—</span>`}
+        </div>
+
+        <div class="cc-detail-row">
+          <span class="cc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Address:
+          </span>
+          <span class="cc-val">${esc(c.address || '—')}</span>
+        </div>
+
+        ${c.notes ? `
+        <div class="cc-detail-row">
+          <span class="cc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Notes:
+          </span>
+          <span class="cc-val">${esc(c.notes)}</span>
+        </div>` : ''}
+      </div>
+
+      <div class="cc-actions">
+        ${c.phone ? `
+          <a href="tel:${esc(c.phone)}" class="btn btn-outline btn-sm cc-btn-call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call
+          </a>` : ''}
+        <button class="btn btn-secondary btn-sm cc-btn-edit" onclick="openEdit(${c.id})">&#9998; Edit</button>
+        <button class="btn btn-ghost btn-sm cc-btn-delete" onclick="delCont(${c.id})" style="color:var(--danger);" title="Deactivate">&#10006;</button>
+      </div>
+    </div>
+    `;
+  }).join('');
 }
 async function saveCont(){const name=document.getElementById('cName').value.trim(),trade=document.getElementById('cTrade').value.trim();if(!name||!trade){showToast('Name and trade required','warning');return;}
   const fd=new FormData();fd.append('name',name);fd.append('trade',trade);fd.append('phone',document.getElementById('cPhone').value);fd.append('nid',document.getElementById('cNID').value);fd.append('address',document.getElementById('cAddress').value);fd.append('notes',document.getElementById('cNotes').value);
@@ -61,7 +113,7 @@ async function saveCont(){const name=document.getElementById('cName').value.trim
 function openEdit(id){const c=allConts.find(x=>x.id==id);if(!c)return;document.getElementById('ecId').value=c.id;document.getElementById('ecName').value=c.name;fillTradeOpts('ecTrade',c.trade||'');document.getElementById('ecPhone').value=c.phone||'';document.getElementById('ecAddress').value=c.address||'';document.getElementById('ecNotes').value=c.notes||'';document.getElementById('ecStatus').value=c.is_active;openModal('editContModal');}
 async function updateCont(){const fd=new FormData();fd.append('id',document.getElementById('ecId').value);fd.append('name',document.getElementById('ecName').value);fd.append('trade',document.getElementById('ecTrade').value);fd.append('phone',document.getElementById('ecPhone').value);fd.append('address',document.getElementById('ecAddress').value);fd.append('notes',document.getElementById('ecNotes').value);fd.append('is_active',document.getElementById('ecStatus').value);
   const r=await fetch(BASE_PATH + '/api/contractors.php?action=update',{method:'POST',body:fd});const d=await r.json();if(d.success){showToast('Updated!','success');closeModal('editContModal');loadContractors();}else showToast(d.message||'Error','error');}
-async function delCont(id){confirmDelete('Deactivate this contractor?',async function(){const fd=new FormData();fd.append('id',id);await fetch(BASE_PATH + '/api/contractors.php?action=delete',{method:'POST',body:fd});showToast('Done','success');loadContractors();});}
+async function delCont(id){confirmDelete('Deactivate this contractor?',async function(adminPass){const fd=new FormData();fd.append('id',id);if(adminPass)fd.append('admin_password',adminPass);const r=await fetch(BASE_PATH + '/api/contractors.php?action=delete',{method:'POST',body:fd});const d=await r.json();if(d.success){showToast('Done','success');loadContractors();}else showToast(d.message||'Error','error');});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 document.addEventListener('DOMContentLoaded',loadContractors);
 </script>

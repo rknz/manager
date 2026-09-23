@@ -193,13 +193,17 @@ try {
             if ($row = $st->fetch()) $trade = (string)$row['trade'];
             $tradeLower = strtolower(trim($trade));
 
+            $isCarpenter = (strpos($tradeLower,'carpenter') !== false || strpos($tradeLower,'wood') !== false || strpos($tradeLower,'board') !== false);
+            $isPainter   = (strpos($tradeLower,'paint') !== false || strpos($tradeLower,'painter') !== false);
+            $isElectric  = (strpos($tradeLower,'elec') !== false);
+            $isThaiGlass = (strpos($tradeLower,'thai') !== false || strpos($tradeLower,'glass') !== false);
+
             $catName = null;
             $catId = null;
-            if (strpos($tradeLower,'carpenter') !== false)      $catName = 'Board & Wood';
-            elseif (strpos($tradeLower,'thai') !== false)        $catName = 'Thai & Glass';
-            elseif (strpos($tradeLower,'glass') !== false)       $catName = 'Thai & Glass';
-            elseif (strpos($tradeLower,'paint') !== false || strpos($tradeLower,'painter') !== false) $catName = 'Paint';
-            elseif (strpos($tradeLower,'elec') !== false)        $catName = 'Electrical & Sanitary';
+            if ($isCarpenter)     $catName = 'Board & Wood';
+            elseif ($isThaiGlass) $catName = 'Thai & Glass';
+            elseif ($isPainter)   $catName = 'Paint';
+            elseif ($isElectric)  $catName = 'Electrical & Sanitary';
             else {
                 $st = $pdo->prepare("SELECT category_id FROM app_project_contractors WHERE project_id=? AND contractor_id=?");
                 $st->execute([$project_id, $cid]);
@@ -207,28 +211,67 @@ try {
             }
 
             $items = [];
-            if ($catName || $catId) {
-                $sql = "SELECT item_name, supply_category, category_id, board_type, board_thickness, board_size,
-                               color_finish, size, unit, SUM(quantity) AS total_qty, SUM(total) AS total_amount
-                        FROM app_supply_purchases
-                        WHERE project_id=? AND is_deleted=0";
-                $params = [$project_id];
-                if ($catId) { $sql .= " AND category_id=?"; $params[] = $catId; }
-                else { $sql .= " AND (supply_category=? OR category_id=(SELECT id FROM app_categories WHERE name=? LIMIT 1))"; $params[] = $catName; $params[] = $catName; }
-                $sql .= " GROUP BY item_name, supply_category, category_id, board_type, board_thickness, board_size, color_finish, size, unit ORDER BY item_name";
-                $st = $pdo->prepare($sql);
-                $st->execute($params);
-                foreach ($st->fetchAll() as $r) {
-                    $parts = [];
-                    if (!empty($r['board_type'])) $parts[] = trim($r['board_type']);
-                    if (!empty($r['board_thickness'])) $parts[] = trim($r['board_thickness']);
-                    if (!empty($r['board_size'])) $parts[] = trim($r['board_size']);
-                    if (!empty($r['color_finish'])) $parts[] = trim($r['color_finish']);
-                    if (!empty($r['size'])) $parts[] = trim($r['size']);
-                    $desc = !empty($parts) ? implode(' - ', $parts) : trim($r['item_name']);
-                    $qty = floatval($r['total_qty']);
-                    $rate = $qty > 0 && floatval($r['total_amount']) > 0 ? round(floatval($r['total_amount']) / $qty, 2) : 0;
-                    $items[] = ['description' => $desc, 'qty' => $qty, 'rate' => $rate];
+            // Painter & Electrician: NEVER load material/supply purchases (attendance only)
+            if (!$isPainter && !$isElectric) {
+                if ($isCarpenter) {
+                    // For Carpenter: Load board purchases filtered by Board categories / board properties
+                    $sql = "SELECT item_name, board_type, board_thickness, unit,
+                                   SUM(quantity) AS total_qty, SUM(total) AS total_amount
+                            FROM app_supply_purchases
+                            WHERE project_id=? AND is_deleted=0
+                              AND (
+                                    supply_category IN ('Board', 'Board & Wood')
+                                    OR category_id=(SELECT id FROM app_categories WHERE name='Board & Wood' LIMIT 1)
+                                    OR (board_thickness IS NOT NULL AND supply_category NOT IN ('Electrical & Sanitary', 'Paint', 'Labour', 'Hardware', 'Thai & Glass'))
+                                    OR ((item_name LIKE '%partex%' OR item_name LIKE '%melamine%' OR item_name LIKE '%gorjon%' OR item_name LIKE '%mdf%' OR item_name LIKE '%hpl%') AND supply_category NOT IN ('Electrical & Sanitary', 'Paint', 'Labour', 'Thai & Glass'))
+                                  )
+                            GROUP BY item_name, board_type, board_thickness, unit
+                            ORDER BY item_name, board_thickness";
+                    $st = $pdo->prepare($sql);
+                    $st->execute([$project_id]);
+                    foreach ($st->fetchAll() as $r) {
+                        $name = trim($r['item_name']);
+                        $btype = trim((string)$r['board_type']);
+                        $thick = trim((string)$r['board_thickness']);
+                        if (!empty($btype)) {
+                            $name = $btype;
+                        }
+                        if (!empty($thick) && is_numeric($thick)) {
+                            $thick .= 'mm';
+                        }
+                        $qty = floatval($r['total_qty']);
+                        $rate = $qty > 0 && floatval($r['total_amount']) > 0 ? round(floatval($r['total_amount']) / $qty, 2) : 0;
+                        $items[] = [
+                            'description' => $name,
+                            'thickness'   => $thick,
+                            'qty'         => $qty,
+                            'rate'        => $rate,
+                            'unit'        => $r['unit'] ?? 'pcs'
+                        ];
+                    }
+                } elseif ($catName || $catId) {
+                    $sql = "SELECT item_name, supply_category, category_id, board_type, board_thickness, board_size,
+                                   color_finish, size, unit, SUM(quantity) AS total_qty, SUM(total) AS total_amount
+                            FROM app_supply_purchases
+                            WHERE project_id=? AND is_deleted=0";
+                    $params = [$project_id];
+                    if ($catId) { $sql .= " AND category_id=?"; $params[] = $catId; }
+                    else { $sql .= " AND (supply_category=? OR category_id=(SELECT id FROM app_categories WHERE name=? LIMIT 1))"; $params[] = $catName; $params[] = $catName; }
+                    $sql .= " GROUP BY item_name, supply_category, category_id, board_type, board_thickness, board_size, color_finish, size, unit ORDER BY item_name";
+                    $st = $pdo->prepare($sql);
+                    $st->execute($params);
+                    foreach ($st->fetchAll() as $r) {
+                        $parts = [];
+                        if (!empty($r['board_type'])) $parts[] = trim($r['board_type']);
+                        if (!empty($r['board_thickness'])) $parts[] = trim($r['board_thickness']);
+                        if (!empty($r['board_size'])) $parts[] = trim($r['board_size']);
+                        if (!empty($r['color_finish'])) $parts[] = trim($r['color_finish']);
+                        if (!empty($r['size'])) $parts[] = trim($r['size']);
+                        $desc = !empty($parts) ? implode(' - ', $parts) : trim($r['item_name']);
+                        $qty = floatval($r['total_qty']);
+                        $rate = $qty > 0 && floatval($r['total_amount']) > 0 ? round(floatval($r['total_amount']) / $qty, 2) : 0;
+                        $items[] = ['description' => $desc, 'qty' => $qty, 'rate' => $rate];
+                    }
                 }
             }
 
@@ -280,7 +323,7 @@ try {
             $st->execute([$project_id, $cid]);
             $payments['contractor_paid'] = (float)$st->fetchColumn();
 
-            echo json_encode(['success'=>true, 'data'=>$items, 'category'=>$catName, 'attendance'=>$attendance, 'payments'=>$payments]);
+            echo json_encode(['success'=>true, 'data'=>$items, 'category'=>$catName, 'trade'=>$trade, 'is_carpenter'=>$isCarpenter, 'is_painter'=>$isPainter, 'is_electric'=>$isElectric, 'attendance'=>$attendance, 'payments'=>$payments]);
             break;
 
         case 'get_worker_bill_data':

@@ -58,14 +58,39 @@ $stmtPurch = $pdo->prepare("SELECT * FROM app_supply_purchases WHERE project_id=
 $stmtPurch->execute([$project_id]);
 $initialPurchases = $stmtPurch->fetchAll(PDO::FETCH_ASSOC);
 
+// Resolve project image with fallback to primary image from app_project_images
+$projectHeroImg = null;
+if (!empty($project['project_image'])) {
+    $cleanImg = str_replace('\\', '/', trim($project['project_image']));
+    if (str_starts_with($cleanImg, 'http://') || str_starts_with($cleanImg, 'https://')) {
+        $projectHeroImg = $cleanImg;
+    } else {
+        $projectHeroImg = $basePath . '/' . ltrim($cleanImg, '/');
+    }
+}
+if (empty($projectHeroImg)) {
+    try {
+        $imgStmt = $pdo->prepare("SELECT image_path FROM app_project_images WHERE project_id=? ORDER BY is_primary DESC, id DESC LIMIT 1");
+        $imgStmt->execute([$project_id]);
+        $fallbackImg = $imgStmt->fetchColumn();
+        if (!empty($fallbackImg)) {
+            $cleanImg = str_replace('\\', '/', trim($fallbackImg));
+            $projectHeroImg = $basePath . '/' . ltrim($cleanImg, '/');
+        }
+    } catch (\Throwable $e) {}
+}
+
 include __DIR__ . '/../includes/header.php';
 ?>
 
 <!-- PROJECT HEADER CARD -->
 <div class="card mb-6 animate-fade-in project-detail-header-card" style="overflow:hidden;">
   <div class="project-hero-container">
-    <?php if($project['project_image']): ?>
-    <img src="<?= $basePath ?>/<?=htmlspecialchars($project['project_image'])?>" class="project-hero-img" alt="<?=htmlspecialchars($project['name'])?>">
+    <?php if(!empty($projectHeroImg)): ?>
+    <img src="<?= htmlspecialchars($projectHeroImg) ?>" class="project-hero-img" alt="<?= htmlspecialchars($project['name']) ?>" onerror="this.style.display='none'; var ph=document.getElementById('projectHeroPlaceholder'); if(ph) ph.style.display='flex';">
+    <div class="project-hero-placeholder" id="projectHeroPlaceholder" style="display:none;">
+      <span style="font-size:64px;opacity:.4;">&#127968;</span>
+    </div>
     <?php else: ?>
     <div class="project-hero-placeholder">
       <span style="font-size:64px;opacity:.4;">&#127968;</span>
@@ -87,6 +112,9 @@ include __DIR__ . '/../includes/header.php';
             <span><i class="fa-solid fa-user" style="color:#A78BFA;margin-right:4px;"></i> <strong><?=htmlspecialchars($project['client_name'])?></strong></span>
             <?php if($project['client_phone']): ?><a href="tel:<?=htmlspecialchars($project['client_phone'])?>"><i class="fa-solid fa-phone" style="color:#60A5FA;margin-right:4px;"></i> <?=htmlspecialchars($project['client_phone'])?></a><?php endif; ?>
             <?php if($project['address']): ?><span><i class="fa-solid fa-location-dot" style="color:#F87171;margin-right:4px;"></i> <?=htmlspecialchars($project['address'])?></span><?php endif; ?>
+            <?php if(!empty($project['start_date']) || !empty($project['end_date'])): ?>
+            <span><i class="fa-regular fa-calendar-days" style="color:#38BDF8;margin-right:4px;"></i> <?= !empty($project['start_date']) ? date('d M Y', strtotime($project['start_date'])) : '-' ?> &rarr; <?= !empty($project['end_date']) ? date('d M Y', strtotime($project['end_date'])) : 'Ongoing' ?></span>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -171,7 +199,7 @@ include __DIR__ . '/../includes/header.php';
   </div>
   <div class="card">
     <div class="card-header"><h3>Purchase List</h3><span id="purchTotal" class="badge badge-danger"><?= 'Tk. ' . number_format($init_purchases, 0, '.', ',') ?></span></div>
-    <div class="table-wrapper">
+    <div class="table-wrapper hide-on-mobile">
       <table class="data-table">
         <thead><tr><th>Date</th><th>Item</th><th>Category</th><th>Qty</th><th>Rate</th><th class="text-right">Total</th><th>Supplier</th><th></th></tr></thead>
         <tbody id="purchTable">
@@ -180,7 +208,7 @@ include __DIR__ . '/../includes/header.php';
           <?php else: foreach($initialPurchases as $p): ?>
           <tr>
             <td><?= !empty($p['purchase_date']) ? date('d M Y', strtotime($p['purchase_date'])) : '-' ?></td>
-            <td><strong><?= htmlspecialchars($p['item_name'] ?? '') ?></strong><?= !empty($p['board_type']) ? '<br><span class="text-xs text-muted">'.htmlspecialchars($p['board_type']).' '.htmlspecialchars($p['board_thickness']??'').' '.htmlspecialchars($p['board_size']??'').'</span>' : '' ?></td>
+            <td><strong><?= htmlspecialchars($p['item_name'] ?? '') ?></strong><?= !empty($p['board_thickness']) ? '<br><span class="text-xs text-muted">Thickness: '.htmlspecialchars($p['board_thickness']).'</span>' : (!empty($p['board_type']) && $p['board_type'] !== ($p['item_name']??'') ? '<br><span class="text-xs text-muted">'.htmlspecialchars($p['board_type']).'</span>' : '') ?></td>
             <td><span class="badge badge-neutral"><?= htmlspecialchars($p['supply_category'] ?: '-') ?></span></td>
             <td><?= (float)($p['quantity'] ?? 0) ?> <?= htmlspecialchars($p['unit'] ?? '') ?></td>
             <td><?= 'Tk. ' . number_format((float)($p['rate'] ?? 0), 0, '.', ',') ?></td>
@@ -196,6 +224,43 @@ include __DIR__ . '/../includes/header.php';
         <tfoot><tr><td colspan="5" style="text-align:right;">Total:</td><td id="purchTableTotal" class="td-amount"><?= 'Tk. ' . number_format($init_purchases, 0, '.', ',') ?></td><td colspan="2"></td></tr></tfoot>
       </table>
     </div>
+    <div id="purchMobileList" class="mobile-cards-list hide-on-desktop">
+      <?php if(empty($initialPurchases)): ?>
+      <div class="card" style="text-align:center;padding:24px 16px;color:var(--text-muted);border-radius:12px;border:1px solid var(--border);">No purchases found</div>
+      <?php else: foreach($initialPurchases as $p): ?>
+      <div class="mobile-record-card">
+        <div class="mrc-header">
+          <div class="mrc-header-left">
+            <span class="mrc-date"><i class="fa-regular fa-calendar" style="color:var(--text-muted);"></i> <?= !empty($p['purchase_date']) ? date('d M Y', strtotime($p['purchase_date'])) : '-' ?></span>
+            <span class="badge badge-neutral" style="font-size:10px;padding:2px 8px;"><?= htmlspecialchars($p['supply_category'] ?: '-') ?></span>
+          </div>
+          <div class="mrc-corner-actions">
+            <button type="button" class="mrc-icon-btn mrc-btn-edit" title="Edit" onclick="openEditPurch(<?= $p['id'] ?>)">&#9998;</button>
+            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delPurch(<?= $p['id'] ?>)">&#10006;</button>
+          </div>
+        </div>
+        <div class="mrc-title-row">
+          <div class="mrc-title">
+            <?= htmlspecialchars($p['item_name'] ?? '') ?>
+            <?php if(!empty($p['board_thickness'])): ?>
+              <span class="mrc-thick"><?= htmlspecialchars($p['board_thickness']) ?> mm</span>
+            <?php elseif(!empty($p['board_type']) && $p['board_type'] !== ($p['item_name']??'')): ?>
+              <span class="mrc-thick"><?= htmlspecialchars($p['board_type']) ?></span>
+            <?php endif; ?>
+          </div>
+          <div class="mrc-amount text-danger"><?= 'Tk. ' . number_format((float)($p['total'] ?? 0), 0, '.', ',') ?></div>
+        </div>
+        <div class="mrc-meta-row">
+          <div class="mrc-meta-item">
+            <span>Qty:</span> <strong><?= (float)($p['quantity'] ?? 0) ?> <?= htmlspecialchars($p['unit'] ?? '') ?></strong> @ <?= 'Tk. ' . number_format((float)($p['rate'] ?? 0), 0, '.', ',') ?>
+          </div>
+          <div class="mrc-meta-item">
+            <i class="fa-solid fa-store" style="font-size:10px;color:var(--text-muted);"></i> <?= htmlspecialchars($p['supplier'] ?: '—') ?>
+          </div>
+        </div>
+      </div>
+      <?php endforeach; endif; ?>
+    </div>
   </div>
 </div>
 
@@ -204,21 +269,21 @@ include __DIR__ . '/../includes/header.php';
   <div class="filter-bar project-tab-filter">
     <select id="billContFilter" class="form-select filter-cat" onchange="onBillingContactChange()"><option value="">All Contractors</option><?php foreach($contractors as $c): ?><option value="<?=$c['id']?>"><?=htmlspecialchars($c['name'])?></option><?php endforeach; ?></select>
     <div class="filter-action-group" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary btn-sm" id="btnBillAdvance" style="display:none;" onclick="openAdvanceForSelected()">&#128176; Advance</button>
-      <button class="btn btn-primary btn-sm" onclick="openModal('addAdvModal')">+ Add Advance</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddAdvanceModal()">+ Add Advance</button>
       <?php if(!empty($all_contractors)): ?><button class="btn btn-outline btn-sm" onclick="openModal('addContractorToProjectModal')">+ Add Contractor</button><?php endif; ?>
       <button class="btn btn-secondary btn-sm" id="btnPrintAdv" onclick="printContractorAdvances()" style="display:none;">&#128247; Print Advances</button>
     </div>
   </div>
   <div class="card">
     <div class="card-header"><h3>Contractor Advances</h3><span id="billTotal" class="badge badge-warning">Tk. 0</span></div>
-    <div class="table-wrapper">
+    <div class="table-wrapper hide-on-mobile">
       <table class="data-table">
         <thead><tr><th>Contractor</th><th>Amount</th><th>Method</th><th>Who Paid</th><th>Date</th><th></th></tr></thead>
         <tbody id="billTable"></tbody>
         <tfoot><tr><td style="text-align:right;">Total:</td><td id="billTableTotal" class="td-amount">Tk. 0</td><td colspan="4"></td></tr></tfoot>
       </table>
     </div>
+    <div id="billMobileList" class="mobile-cards-list hide-on-desktop"></div>
   </div>
 </div>
 
@@ -239,13 +304,14 @@ include __DIR__ . '/../includes/header.php';
   <div class="two-col" style="align-items:start;">
     <div class="card mb-4">
       <div class="card-header"><h3>Attendance Records</h3><span id="attEarnedTotal" class="badge badge-success">Tk. 0</span></div>
-      <div class="table-wrapper">
+      <div class="table-wrapper hide-on-mobile">
         <table class="data-table">
           <thead><tr><th>Date</th><th>Worker</th><th>Type</th><th>Rate</th><th class="text-right">Earned</th><th></th></tr></thead>
           <tbody id="attTable"></tbody>
           <tfoot><tr><td colspan="4" style="text-align:right;">Total:</td><td id="attTableTotal" class="td-amount">Tk. 0</td><td></td></tr></tfoot>
         </table>
       </div>
+      <div id="attMobileList" class="mobile-cards-list hide-on-desktop"></div>
     </div>
     <div>
       <div class="card mb-4">
@@ -254,12 +320,13 @@ include __DIR__ . '/../includes/header.php';
       </div>
       <div class="card">
         <div class="card-header"><h3>Payment Records</h3><span id="attPaidTotal" class="badge badge-warning">Tk. 0</span></div>
-        <div class="table-wrapper">
+        <div class="table-wrapper hide-on-mobile">
           <table class="data-table">
             <thead><tr><th>Worker</th><th>Amount</th><th>Date</th><th></th></tr></thead>
             <tbody id="laborPayTable"></tbody>
           </table>
         </div>
+        <div id="laborPayMobileList" class="mobile-cards-list hide-on-desktop"></div>
       </div>
     </div>
   </div>
@@ -332,18 +399,32 @@ include __DIR__ . '/../includes/header.php';
       <div class="form-group"><label class="form-label">Date</label><input type="text" id="pDate" class="form-input smart-date" placeholder="e.g. <?=date('j/n/y')?>" data-date-target="pDateH"><input type="hidden" id="pDateH" value="<?=date('Y-m-d')?>"></div>
       <div class="form-group"><label class="form-label">Category</label>
         <select id="pCat" class="form-select" onchange="toggleBoardFields()">
-          <option value="">-- Select --</option><option>Board</option><option>Paint</option><option>Hardware</option><option>Glass</option><option>Electric</option><option>Labour</option><option>Other</option>
+          <option value="">-- Select --</option>
+          <option value="Board & Wood">Board & Wood</option>
+          <option value="Paint">Paint</option>
+          <option value="Electrical & Sanitary">Electrical & Sanitary</option>
+          <option value="Thai & Glass">Thai & Glass</option>
+          <option value="Hardware">Hardware</option>
+          <option value="Labour">Labour</option>
+          <option value="Other">Other</option>
         </select></div>
     </div>
-    <div class="form-group"><label class="form-label">Item Name <span class="required">*</span></label><input type="text" id="pItem" class="form-input" placeholder="Item name" list="pItemList" autocomplete="off"><datalist id="pItemList"></datalist></div>
-    <div id="pBoardFields" class="three-col" style="display:none;">
-      <div class="form-group"><label class="form-label">Board Type</label><input type="text" id="pBoardType" class="form-input" placeholder="Plex/MDF" list="bTypeList"><datalist id="bTypeList"><option>Plex</option><option>MDF</option><option>Ply</option><option>Particle</option><option>Melamine</option></datalist></div>
-      <div class="form-group"><label class="form-label">Thickness</label><input type="text" id="pThick" class="form-input" placeholder="18mm" list="thickList"><datalist id="thickList"><option>8mm</option><option>12mm</option><option>16mm</option><option>18mm</option><option>25mm</option></datalist></div>
-      <div class="form-group"><label class="form-label">Size</label><input type="text" id="pSize" class="form-input" placeholder="8x4"></div>
+    <div class="form-group">
+      <label class="form-label" id="pItemLabel">Item Name <span class="required">*</span></label>
+      <input type="text" id="pItem" class="form-input" placeholder="Item name" list="pItemList" autocomplete="off">
+      <datalist id="pItemList"></datalist>
+      <datalist id="pBoardSuggestions">
+        <option>Melamine</option><option>Partex</option><option>PVC</option><option>Gorjon</option><option>MDF</option><option>Ply</option><option>Plex</option><option>HPL</option>
+      </datalist>
+    </div>
+    <div id="pBoardFields" class="form-group" style="display:none; margin-bottom:14px;">
+      <label class="form-label">Board Thickness (mm) <span class="required">*</span></label>
+      <input type="text" id="pThick" class="form-input" placeholder="e.g. 12mm" list="thickList" onblur="if(this.value && isFinite(this.value)) this.value += 'mm'">
+      <datalist id="thickList"><option>6mm</option><option>8mm</option><option>9mm</option><option>10mm</option><option>12mm</option><option>18mm</option><option>25mm</option></datalist>
     </div>
     <div class="three-col">
-      <div class="form-group"><label class="form-label">Qty <span class="required">*</span></label><input type="number" id="pQty" class="form-input" step="0.01" oninput="calcPurchTotal()"></div>
-      <div class="form-group"><label class="form-label">Unit</label><input type="text" id="pUnit" class="form-input" list="pUnitList"><datalist id="pUnitList"><option>pcs</option><option>sft</option><option>rft</option><option>kg</option><option>ltr</option><option>set</option></datalist></div>
+      <div class="form-group"><label class="form-label" id="pQtyLabel">Qty <span class="required">*</span></label><input type="number" id="pQty" class="form-input" step="0.01" oninput="calcPurchTotal()"></div>
+      <div class="form-group" id="pUnitGroup"><label class="form-label">Unit</label><input type="text" id="pUnit" class="form-input" list="pUnitList" placeholder="pcs"><datalist id="pUnitList"><option>pcs</option><option>sft</option><option>rft</option><option>kg</option><option>ltr</option><option>set</option></datalist></div>
       <div class="form-group"><label class="form-label">Rate (Tk) <span class="required">*</span></label><input type="number" id="pRate" class="form-input" step="0.01" oninput="calcPurchTotal()"></div>
     </div>
     <div class="form-group"><label class="form-label">Supplier</label><input type="text" id="pSupplier" class="form-input" placeholder="Optional" list="pSupplierList"><datalist id="pSupplierList"></datalist></div>
@@ -362,13 +443,31 @@ include __DIR__ . '/../includes/header.php';
     <input type="hidden" id="epId">
     <div class="two-col">
       <div class="form-group"><label class="form-label">Date</label><input type="text" id="epDate" class="form-input smart-date" data-date-target="epDateH"><input type="hidden" id="epDateH"></div>
-      <div class="form-group"><label class="form-label">Category</label><select id="epCat" class="form-select"><option value="">--</option><option>Board</option><option>Paint</option><option>Hardware</option><option>Glass</option><option>Electric</option><option>Labour</option><option>Other</option></select></div>
+      <div class="form-group"><label class="form-label">Category</label>
+        <select id="epCat" class="form-select" onchange="toggleEditBoardFields()">
+          <option value="">--</option>
+          <option value="Board & Wood">Board & Wood</option>
+          <option value="Paint">Paint</option>
+          <option value="Electrical & Sanitary">Electrical & Sanitary</option>
+          <option value="Thai & Glass">Thai & Glass</option>
+          <option value="Hardware">Hardware</option>
+          <option value="Labour">Labour</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
     </div>
-    <div class="form-group"><label class="form-label">Item Name</label><input type="text" id="epItem" class="form-input"></div>
+    <div class="form-group">
+      <label class="form-label" id="epItemLabel">Item Name <span class="required">*</span></label>
+      <input type="text" id="epItem" class="form-input" list="pItemList">
+    </div>
+    <div id="epBoardFields" class="form-group" style="display:none; margin-bottom:14px;">
+      <label class="form-label">Board Thickness (mm) <span class="required">*</span></label>
+      <input type="text" id="epThick" class="form-input" placeholder="e.g. 12mm" list="thickList" onblur="if(this.value && isFinite(this.value)) this.value += 'mm'">
+    </div>
     <div class="three-col">
-      <div class="form-group"><label class="form-label">Qty</label><input type="number" id="epQty" class="form-input" oninput="calcEditPurchTotal()"></div>
-      <div class="form-group"><label class="form-label">Unit</label><input type="text" id="epUnit" class="form-input"></div>
-      <div class="form-group"><label class="form-label">Rate</label><input type="number" id="epRate" class="form-input" oninput="calcEditPurchTotal()"></div>
+      <div class="form-group"><label class="form-label" id="epQtyLabel">Qty <span class="required">*</span></label><input type="number" id="epQty" class="form-input" oninput="calcEditPurchTotal()"></div>
+      <div class="form-group" id="epUnitGroup"><label class="form-label">Unit</label><input type="text" id="epUnit" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Rate <span class="required">*</span></label><input type="number" id="epRate" class="form-input" oninput="calcEditPurchTotal()"></div>
     </div>
     <div style="background:var(--primary-light);padding:12px 16px;border-radius:var(--radius-md);display:flex;justify-content:space-between;"><span style="font-weight:600;color:var(--primary);">Total</span><span id="epTotalDisplay" style="font-family:'Poppins','Noto Sans Bengali','Hind Siliguri','Nirmala UI','Vrinda','Shonar Bangla',sans-serif;font-weight:800;color:var(--primary);font-size:18px;">Tk. 0</span></div>
   </div>
@@ -394,37 +493,152 @@ include __DIR__ . '/../includes/header.php';
 </div></div>
 
 <!-- GENERATE FINAL BILL MODAL -->
-<div class="modal-overlay" id="generateFinalBillModal"><div class="modal modal-lg" data-form-nav>
-  <div class="modal-header"><h3>&#128247; Generate Final Bill</h3><div class="modal-close" onclick="closeModal('generateFinalBillModal')">&times;</div></div>
-  <div class="modal-body">
-    <form id="finalBillForm" action="<?= $basePath ?>/print_custom_bill" method="POST" target="_blank">
-      <input type="hidden" name="project_id" value="<?= $project_id ?>">
-      <input type="hidden" name="items_json" id="fbItemsJson" value="[]">
-      <div class="two-col">
-        <div class="form-group"><label class="form-label">Bill Type</label><select id="fbType" name="bill_type" class="form-select" onchange="loadFbTargets()"><option value="contractor">Contractor Bill</option><option value="labor">Labor / Worker Bill</option></select></div>
-        <div class="form-group"><label class="form-label">Select Person <span class="required">*</span></label><select id="fbTarget" name="target_id" class="form-select" onchange="fetchFinalBillData(this.value)" required></select></div>
-      </div>
-      <div class="form-group"><label class="form-label">Bill Date</label><input type="text" id="fbDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="fbDateH"><input type="hidden" id="fbDateH" name="bill_date" value="<?=date('Y-m-d')?>"></div>
-      
-      <div id="fbItemsContainer">
-        <div class="bill-item-row three-col" style="gap:8px;margin-bottom:8px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" class="row-selector" style="width:18px;height:18px;cursor:pointer;" title="Select to group">
-            <input type="text" class="form-input bill-desc" placeholder="Description" style="flex:1;">
-          </div>
-          <input type="number" class="form-input bill-qty" placeholder="Qty" oninput="calcFbTotal()">
-          <input type="number" class="form-input bill-rate" placeholder="Rate" oninput="calcFbTotal()">
+<div class="modal-overlay" id="generateFinalBillModal">
+  <div class="modal final-bill-modal" data-form-nav>
+    <div class="fb-mobile-drag-handle"></div>
+    <div class="fb-modal-header">
+      <div class="fb-header-left">
+        <div class="fb-header-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        </div>
+        <div class="fb-header-text">
+          <h3 id="fbModalTitle">Final Bill &mdash; <span id="fbProjectName"><?= htmlspecialchars($project['name'] ?? 'Project') ?></span></h3>
+          <p class="fb-header-subtitle">Generate and print final bill for completed projects.</p>
         </div>
       </div>
-      <div style="display:flex; gap:10px; margin-top:10px;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="addFbRow()">+ Add Row</button>
-        <button type="button" class="btn btn-outline btn-sm" onclick="groupSelectedRows()">&#128279; Group Selected</button>
-      </div>
-      <div style="background:var(--warning-bg);padding:14px;border-radius:var(--radius-md);display:flex;justify-content:space-between;"><span style="font-weight:700;">Grand Total</span><span id="fbGrandTotal" style="font-family:'Poppins','Noto Sans Bengali','Hind Siliguri','Nirmala UI','Vrinda','Shonar Bangla',sans-serif;font-weight:800;font-size:20px;">Tk. 0</span></div>
-    </form>
+      <button type="button" class="fb-close-btn" onclick="closeModal('generateFinalBillModal')" aria-label="Close">&times;</button>
+    </div>
+    <div class="fb-modal-body">
+      <form id="finalBillForm" action="<?= $basePath ?>/print_custom_bill" method="POST" target="_blank">
+        <input type="hidden" name="project_id" id="fbProjectId" value="<?= $project_id ?>">
+        <input type="hidden" name="items_json" id="fbItemsJson" value="[]">
+
+        <div class="fb-top-grid">
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+              Bill Type
+            </label>
+            <select id="fbType" name="bill_type" class="fb-select" onchange="loadFbTargets()">
+              <option value="contractor">Contractor Bill</option>
+              <option value="labor">Labor / Worker Bill</option>
+            </select>
+          </div>
+
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Select Person <span class="required" style="color:#DC2626;">*</span>
+            </label>
+            <select id="fbTarget" name="target_id" class="fb-select" onchange="fetchFinalBillData(this.value)" required>
+              <option value="">-- Select --</option>
+            </select>
+          </div>
+
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Bill Date
+            </label>
+            <div class="fb-date-input-wrap">
+              <input type="text" id="fbDate" class="fb-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="fbDateH" value="<?=date('j/n/y')?>">
+              <input type="hidden" id="fbDateH" name="bill_date" value="<?=date('Y-m-d')?>">
+            </div>
+          </div>
+
+          <div class="fb-field-group fb-items-header-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+              Bill Items
+            </label>
+            <button type="button" class="fb-add-row-btn" onclick="addFbRow()">
+              + Add Row
+            </button>
+          </div>
+        </div>
+
+        <div class="fb-table-section">
+          <div class="fb-table-header">
+            <div class="fb-th-col fb-col-check">
+              <input type="checkbox" id="fbSelectAll" class="fb-checkbox" onchange="toggleSelectAllFb(this)">
+            </div>
+            <div class="fb-th-col fb-col-desc">Item / Description</div>
+            <div class="fb-th-col fb-col-thick">Thickness</div>
+            <div class="fb-th-col fb-col-qty">Qty</div>
+            <div class="fb-th-col fb-col-rate">Rate</div>
+            <div class="fb-th-col fb-col-total">Total</div>
+            <div class="fb-th-col fb-col-del">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+          </div>
+          <div id="fbItemsContainer" class="fb-items-container"></div>
+        </div>
+
+        <div class="fb-group-action-row">
+          <button type="button" class="fb-group-btn" onclick="groupSelectedRows()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            Group Selected Rows
+          </button>
+        </div>
+
+        <div class="fb-grand-total-strip">
+          <div class="fb-gt-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="20" height="20">
+              <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="8" y1="10" x2="16" y2="10"></line>
+              <line x1="8" y1="14" x2="12" y2="14"></line>
+            </svg>
+            <span>Grand Total</span>
+          </div>
+          <div class="fb-gt-val" id="fbGrandTotal">Tk. 0</div>
+        </div>
+
+        <div class="fb-modal-footer">
+          <button type="button" class="fb-btn-cancel" onclick="closeModal('generateFinalBillModal')">Cancel</button>
+          <button type="button" class="fb-btn-print" onclick="generateAndPrintFb()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Generate & Print
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('generateFinalBillModal')">Cancel</button><button class="btn btn-primary" onclick="generateAndPrintFb()">Generate & Print</button></div>
-</div></div>
+</div>
 
 <!-- PRINT ADVANCES PREVIEW (editable, print-preview only) -->
 <div class="modal-overlay" id="printAdvancesModal"><div class="modal" data-form-nav style="max-width:760px;">
@@ -475,9 +689,39 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
     <button class="btn btn-secondary" onclick="closeModal('workerReportModal')">Cancel</button>
     <div style="display:flex; gap:10px;">
       <button class="btn btn-primary" onclick="printWorkerReport('attendance')">&#128247; Print Attendance</button>
-      <button class="btn btn-outline" onclick="printWorkerReport('payment')">&#128247; Print Payments</button>
+      <button class="btn btn-outline" onclick="printWorkerReport('payments')">&#128247; Print Payments</button>
     </div>
   </div>
+</div></div>
+
+<!-- EDIT ATTENDANCE MODAL -->
+<div class="modal-overlay" id="editAttModal"><div class="modal" data-form-nav>
+  <div class="modal-header"><h3>&#9998; Edit Attendance</h3><div class="modal-close" onclick="closeModal('editAttModal')">&times;</div></div>
+  <div class="modal-body">
+    <input type="hidden" id="eaId">
+    <input type="hidden" id="eaWorker">
+    <div class="form-group">
+      <label class="form-label">Worker</label>
+      <div style="font-weight:700;font-size:14px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;" id="eaWorkerName">-</div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Work Date <span class="required">*</span></label><input type="text" id="eaDate" class="form-input smart-date" data-date-target="eaDateH"><input type="hidden" id="eaDateH"></div>
+      <div class="form-group"><label class="form-label">Attendance Status <span class="required">*</span></label>
+        <select id="eaMultiplier" class="form-select" onchange="calcEditAttEarned()">
+          <option value="1">Full Day (1.0x)</option>
+          <option value="0.5">Half Day (0.5x)</option>
+          <option value="1.5">Overtime (1.5x)</option>
+          <option value="2">Double (2.0x)</option>
+        </select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-group"><label class="form-label">Daily Rate (Tk) <span class="required">*</span></label><input type="number" id="eaDailyRate" class="form-input" oninput="calcEditAttEarned()"></div>
+      <div class="form-group"><label class="form-label">Earned (Tk)</label><input type="text" id="eaEarnedDisplay" class="form-input" readonly style="font-weight:700;color:var(--success);"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input type="text" id="eaNotes" class="form-input" placeholder="e.g. Work notes"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editAttModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateAttendance()">Save Changes</button></div>
 </div></div>
 
 <!-- ADD LABOR PAYMENT -->
@@ -522,25 +766,77 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
 </div></div>
 
 <!-- EDIT PROJECT -->
-<div class="modal-overlay" id="editProjectModal"><div class="modal modal-lg" data-form-nav>
-  <div class="modal-header"><h3>&#9998; Edit Project</h3><div class="modal-close" onclick="closeModal('editProjectModal')">&times;</div></div>
-  <div class="modal-body">
-    <div class="two-col">
-      <div class="form-group"><label class="form-label">Project Name <span class="required">*</span></label><input type="text" id="epName" class="form-input" value="<?=htmlspecialchars($project['name'])?>"></div>
-      <div class="form-group"><label class="form-label">Status</label><select id="epStatus" class="form-select"><option <?=$project['status']=='Ongoing'?'selected':''?>>Ongoing</option><option <?=$project['status']=='Completed'?'selected':''?>>Completed</option><option <?=$project['status']=='On Hold'?'selected':''?>>On Hold</option><option <?=$project['status']=='Cancelled'?'selected':''?>>Cancelled</option></select></div>
+<div class="modal-overlay" id="editProjectModal">
+  <div class="modal modal-lg" data-form-nav>
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#9C1F24;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(156,31,36,0.25);">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:17.5px;font-weight:700;color:#0F172A;line-height:1.2;">Edit Project</h3>
+          <p style="margin:2px 0 0 0;font-size:12px;color:#64748B;">Update project details, budget & client info</p>
+        </div>
+      </div>
+      <div class="modal-close" onclick="closeModal('editProjectModal')">&times;</div>
     </div>
-    <div class="form-group"><label class="form-label">Address</label><input type="text" id="epAddress" class="form-input" value="<?=htmlspecialchars($project['address']??'')?>"></div>
-    <div class="two-col">
-      <div class="form-group"><label class="form-label">Client Name</label><input type="text" id="epClient" class="form-input" value="<?=htmlspecialchars($project['client_name'])?>"></div>
-      <div class="form-group"><label class="form-label">Client Phone</label><input type="tel" id="epPhone" class="form-input" value="<?=htmlspecialchars($project['client_phone']??'')?>"></div>
+    <div class="modal-body">
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Project Name <span class="required">*</span></label>
+          <input type="text" id="epName" class="form-input" value="<?=htmlspecialchars($project['name'])?>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="epStatus" class="form-select">
+            <option <?=$project['status']=='Ongoing'?'selected':''?>>Ongoing</option>
+            <option <?=$project['status']=='Completed'?'selected':''?>>Completed</option>
+            <option <?=$project['status']=='On Hold'?'selected':''?>>On Hold</option>
+            <option <?=$project['status']=='Cancelled'?'selected':''?>>Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input type="text" id="epAddress" class="form-input" value="<?=htmlspecialchars($project['address']??'')?>">
+      </div>
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Client Name</label>
+          <input type="text" id="epClient" class="form-input" value="<?=htmlspecialchars($project['client_name'])?>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Phone</label>
+          <input type="tel" id="epPhone" class="form-input" value="<?=htmlspecialchars($project['client_phone']??'')?>">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Budget (Tk)</label>
+        <input type="number" id="epBudget" class="form-input" value="<?=$project['estimated_budget']??0?>">
+      </div>
+      <div class="two-col">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input type="text" id="epStartDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="epStartDateH" value="<?=$project['start_date'] ? date('j/n/y', strtotime($project['start_date'])) : ''?>">
+          <input type="hidden" id="epStartDateH" value="<?=$project['start_date']??''?>">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expected End Date</label>
+          <input type="text" id="epEndDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="epEndDateH" value="<?=$project['end_date'] ? date('j/n/y', strtotime($project['end_date'])) : ''?>">
+          <input type="hidden" id="epEndDateH" value="<?=$project['end_date']??''?>">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Notes</label>
+        <textarea id="epNotes" class="form-textarea" rows="3" placeholder="Additional notes or specifications..."><?=htmlspecialchars($project['notes']??'')?></textarea>
+      </div>
     </div>
-      <div class="form-group"><label class="form-label">Budget (Tk)</label><input type="number" id="epBudget" class="form-input" value="<?=$project['estimated_budget']??0?>"></div>
-      <div class="form-group"><label class="form-label">End Date</label><input type="text" id="epEndDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="epEndDateH"><input type="hidden" id="epEndDateH" value="<?=$project['end_date']??''?>"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('editProjectModal')">Cancel</button>
+      <button class="btn btn-primary" data-save-btn onclick="updateProject()"><i class="fa-solid fa-check"></i> Save Changes</button>
     </div>
-    <div class="form-group"><label class="form-label">Notes</label><textarea id="epNotes" class="form-textarea"><?=htmlspecialchars($project['notes']??'')?></textarea></div>
   </div>
-  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('editProjectModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="updateProject()">Save</button></div>
-</div></div>
+</div>
 
 <!-- ADD CONTRACTOR TO PROJECT -->
 <div class="modal-overlay" id="addContractorToProjectModal"><div class="modal" data-form-nav>
@@ -555,11 +851,11 @@ $extraScripts = array_merge($extraScripts ?? [], ['attendance-entry.js']);
 window.onerror = function(msg, url, lineNo, columnNo, error) {
   var data = "Error: " + msg + " at " + lineNo + ":" + columnNo;
   if (error && error.stack) data += "\nStack: " + error.stack;
-  fetch('/log_error.php', { method: 'POST', body: data });
+  fetch(BASE_PATH + '/log_error.php', { method: 'POST', body: data });
   return false;
 };
 window.addEventListener('unhandledrejection', function(event) {
-  fetch('/log_error.php', { method: 'POST', body: "Unhandled Promise Rejection: " + event.reason });
+  fetch(BASE_PATH + '/log_error.php', { method: 'POST', body: "Unhandled Promise Rejection: " + event.reason });
 });
 var PID = <?=intval($project_id)?>;
 var TODAY = '<?=date('Y-m-d')?>';
@@ -631,23 +927,62 @@ async function loadPurchases() {
 }
 function renderPurchases(rows, total) {
   const body = document.getElementById('purchTable');
-  if(!rows.length){body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">No purchases found</td></tr>';document.getElementById('purchTotal').textContent='Tk. 0';document.getElementById('purchTableTotal').textContent='Tk. 0';return;}
+  const mList = document.getElementById('purchMobileList');
+  if(!rows.length){
+    if(body) body.innerHTML='<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted);">No purchases found</td></tr>';
+    if(mList) mList.innerHTML='<div class="card" style="text-align:center;padding:32px 16px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No purchases found</div>';
+    document.getElementById('purchTotal').textContent='Tk. 0';
+    document.getElementById('purchTableTotal').textContent='Tk. 0';
+    return;
+  }
   document.getElementById('purchTotal').textContent=fmt(total);
   document.getElementById('purchTableTotal').textContent=fmt(total);
-  body.innerHTML=rows.map(p=>`<tr>
-    <td>${fmtDate(p.purchase_date)}</td>
-    <td><strong>${esc(p.item_name)}</strong>${p.board_type?`<br><span class='text-xs text-muted'>${esc(p.board_type)} ${esc(p.board_thickness||'')} ${esc(p.board_size||'')}</span>`:''}
-    </td>
-    <td><span class="badge badge-neutral">${esc(p.supply_category||'-')}</span></td>
-    <td>${parseFloat(p.quantity)} ${esc(p.unit||'')}</td>
-    <td>${fmt(p.rate)}</td>
-    <td class="td-amount text-danger">${fmt(p.total)}</td>
-    <td>${esc(p.supplier||'-')}</td>
-    <td class="td-actions">
-      <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditPurch(${p.id})">&#9998;</button>
-      <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="delPurch(${p.id})">&#10006;</button>
-    </td>
-  </tr>`).join('');
+  if(body) {
+    body.innerHTML=rows.map(p=>`<tr>
+      <td>${fmtDate(p.purchase_date)}</td>
+      <td><strong>${esc(p.item_name)}</strong>${p.board_thickness?`<br><span class='text-xs text-muted'>Thickness: ${esc(p.board_thickness)}</span>`:(p.board_type&&p.board_type!==p.item_name?`<br><span class='text-xs text-muted'>${esc(p.board_type)}</span>`:'')}</td>
+      <td><span class="badge badge-neutral">${esc(p.supply_category||'-')}</span></td>
+      <td>${parseFloat(p.quantity)} ${esc(p.unit||'')}</td>
+      <td>${fmt(p.rate)}</td>
+      <td class="td-amount text-danger">${fmt(p.total)}</td>
+      <td>${esc(p.supplier||'-')}</td>
+      <td class="td-actions">
+        <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="openEditPurch(${p.id})">&#9998;</button>
+        <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="delPurch(${p.id})">&#10006;</button>
+      </td>
+    </tr>`).join('');
+  }
+  if(mList) {
+    mList.innerHTML=rows.map(p=>`
+      <div class="mobile-record-card">
+        <div class="mrc-header">
+          <div class="mrc-header-left">
+            <span class="mrc-date"><i class="fa-regular fa-calendar" style="color:var(--text-muted);"></i> ${fmtDate(p.purchase_date)}</span>
+            <span class="badge badge-neutral" style="font-size:10px;padding:2px 8px;">${esc(p.supply_category||'-')}</span>
+          </div>
+          <div class="mrc-corner-actions">
+            <button type="button" class="mrc-icon-btn mrc-btn-edit" title="Edit" onclick="openEditPurch(${p.id})">&#9998;</button>
+            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delPurch(${p.id})">&#10006;</button>
+          </div>
+        </div>
+        <div class="mrc-title-row">
+          <div class="mrc-title">
+            ${esc(p.item_name)}
+            ${p.board_thickness ? `<span class="mrc-thick">${esc(p.board_thickness)} mm</span>` : (p.board_type && p.board_type !== p.item_name ? `<span class="mrc-thick">${esc(p.board_type)}</span>` : '')}
+          </div>
+          <div class="mrc-amount text-danger">${fmt(p.total)}</div>
+        </div>
+        <div class="mrc-meta-row">
+          <div class="mrc-meta-item">
+            <span>Qty:</span> <strong>${parseFloat(p.quantity)} ${esc(p.unit||'')}</strong> @ ${fmt(p.rate)}
+          </div>
+          <div class="mrc-meta-item">
+            <i class="fa-solid fa-store" style="font-size:10px;color:var(--text-muted);"></i> ${esc(p.supplier||'—')}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
 }
 const pItemEl = document.getElementById('pItem');
 if (pItemEl) {
@@ -675,47 +1010,186 @@ if (pSearchEl) {
     }
   });
 }
-function toggleBoardFields(){const bf=document.getElementById('pBoardFields');if(bf)bf.style.display=document.getElementById('pCat').value==='Board'?'grid':'none';}
+function toggleBoardFields(){
+  const val = document.getElementById('pCat').value;
+  const isBoard = val === 'Board' || val === 'Board & Wood' || /board/i.test(val);
+  const itemLabel = document.getElementById('pItemLabel');
+  const itemInput = document.getElementById('pItem');
+  const bf = document.getElementById('pBoardFields');
+  const unitGroup = document.getElementById('pUnitGroup');
+  const unitInput = document.getElementById('pUnit');
+  const qtyLabel = document.getElementById('pQtyLabel');
+
+  if (isBoard) {
+    if (itemLabel) itemLabel.innerHTML = 'Board Type <span class="required">*</span>';
+    if (itemInput) {
+      itemInput.placeholder = 'e.g. Melamine, Partex, PVC, Gorjon';
+      itemInput.setAttribute('list', 'pBoardSuggestions');
+    }
+    if (bf) bf.style.display = 'block';
+    if (unitGroup) unitGroup.style.display = 'none';
+    if (unitInput) unitInput.value = 'pcs';
+    if (qtyLabel) qtyLabel.innerHTML = 'Qty (pcs) <span class="required">*</span>';
+  } else {
+    if (itemLabel) itemLabel.innerHTML = 'Item Name <span class="required">*</span>';
+    if (itemInput) {
+      itemInput.placeholder = 'Item name';
+      itemInput.setAttribute('list', 'pItemList');
+    }
+    if (bf) bf.style.display = 'none';
+    if (unitGroup) unitGroup.style.display = 'block';
+    if (qtyLabel) qtyLabel.innerHTML = 'Qty <span class="required">*</span>';
+  }
+}
+
+function toggleEditBoardFields(){
+  const val = document.getElementById('epCat').value;
+  const isBoard = val === 'Board' || val === 'Board & Wood' || /board/i.test(val);
+  const itemLabel = document.getElementById('epItemLabel');
+  const itemInput = document.getElementById('epItem');
+  const bf = document.getElementById('epBoardFields');
+  const unitGroup = document.getElementById('epUnitGroup');
+  const unitInput = document.getElementById('epUnit');
+  const qtyLabel = document.getElementById('epQtyLabel');
+
+  if (isBoard) {
+    if (itemLabel) itemLabel.innerHTML = 'Board Type <span class="required">*</span>';
+    if (itemInput) {
+      itemInput.placeholder = 'e.g. Melamine, Partex, PVC, Gorjon';
+      itemInput.setAttribute('list', 'pBoardSuggestions');
+    }
+    if (bf) bf.style.display = 'block';
+    if (unitGroup) unitGroup.style.display = 'none';
+    if (unitInput) unitInput.value = 'pcs';
+    if (qtyLabel) qtyLabel.innerHTML = 'Qty (pcs) <span class="required">*</span>';
+  } else {
+    if (itemLabel) itemLabel.innerHTML = 'Item Name <span class="required">*</span>';
+    if (itemInput) {
+      itemInput.placeholder = 'Item name';
+      itemInput.setAttribute('list', 'pItemList');
+    }
+    if (bf) bf.style.display = 'none';
+    if (unitGroup) unitGroup.style.display = 'block';
+    if (qtyLabel) qtyLabel.innerHTML = 'Qty <span class="required">*</span>';
+  }
+}
+
 function calcPurchTotal(){const q=parseFloat(document.getElementById('pQty').value)||0,r=parseFloat(document.getElementById('pRate').value)||0;const td=document.getElementById('pTotalDisplay');if(td)td.textContent=fmt(q*r);}
 function calcEditPurchTotal(){const q=parseFloat(document.getElementById('epQty').value)||0,r=parseFloat(document.getElementById('epRate').value)||0;const td=document.getElementById('epTotalDisplay');if(td)td.textContent=fmt(q*r);}
+
 async function savePurchase(){
-  const item=document.getElementById('pItem').value.trim();
-  const qty=parseFloat(document.getElementById('pQty').value)||0;
-  const rate=parseFloat(document.getElementById('pRate').value)||0;
-  if(!item||qty<=0||rate<=0){showToast('Item, qty and rate required','warning');return;}
-  const fd=new FormData();
-  fd.append('project_id',PID);fd.append('item_name',item);fd.append('supply_category',document.getElementById('pCat').value);
-  fd.append('board_type',document.getElementById('pBoardType').value);fd.append('board_thickness',document.getElementById('pThick').value);fd.append('board_size',document.getElementById('pSize').value);
-  fd.append('quantity',qty);fd.append('unit',document.getElementById('pUnit').value||'pcs');fd.append('rate',rate);
-  fd.append('supplier',document.getElementById('pSupplier').value);fd.append('purchase_date',document.getElementById('pDateH').value||TODAY);
-  const r=await fetch(BASE_PATH + '/api/purchases.php?action=create',{method:'POST',body:fd});
-  const d=await r.json();
-  if(d.success){showToast('Purchase saved!','success');closeModal('addPurchModal');loadPurchases();loadHeaderStats();}
-  else showToast(d.message||'Error','error');
+  const catVal = document.getElementById('pCat').value;
+  const isBoard = catVal === 'Board' || catVal === 'Board & Wood' || /board/i.test(catVal);
+  const item = document.getElementById('pItem').value.trim();
+  const thickVal = document.getElementById('pThick') ? document.getElementById('pThick').value.trim() : '';
+  const qty = parseFloat(document.getElementById('pQty').value) || 0;
+  const rate = parseFloat(document.getElementById('pRate').value) || 0;
+
+  if (!item) { showToast(isBoard ? 'Board type is required' : 'Item name is required', 'warning'); return; }
+  if (isBoard && !thickVal) {
+    showToast('Board thickness (mm) is required', 'warning');
+    document.getElementById('pThick').focus();
+    return;
+  }
+  if (qty <= 0 || rate <= 0) { showToast('Quantity and rate must be greater than 0', 'warning'); return; }
+
+  const fd = new FormData();
+  fd.append('project_id', PID);
+  fd.append('item_name', item);
+  fd.append('supply_category', catVal);
+  fd.append('board_type', item);
+  fd.append('board_thickness', thickVal);
+  fd.append('board_size', '');
+  fd.append('quantity', qty);
+  fd.append('unit', isBoard ? 'pcs' : (document.getElementById('pUnit').value || 'pcs'));
+  fd.append('rate', rate);
+  fd.append('supplier', document.getElementById('pSupplier').value);
+  fd.append('purchase_date', document.getElementById('pDateH').value || TODAY);
+
+  try {
+    const r = await fetch(BASE_PATH + '/api/purchases.php?action=create', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.success) {
+      showToast('Purchase saved!', 'success');
+      closeModal('addPurchModal');
+      document.getElementById('pItem').value = '';
+      document.getElementById('pQty').value = '';
+      document.getElementById('pRate').value = '';
+      document.getElementById('pSupplier').value = '';
+      if (document.getElementById('pThick')) document.getElementById('pThick').value = '';
+      document.getElementById('pCat').value = '';
+      toggleBoardFields();
+      calcPurchTotal();
+      loadPurchases();
+      loadHeaderStats();
+    } else {
+      showToast(d.message || 'Error saving purchase', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
+
 function openEditPurch(id){
-  const p=allPurchases.find(x=>x.id==id);if(!p)return;
-  document.getElementById('epId').value=p.id;
-  document.getElementById('epItem').value=p.item_name;
-  document.getElementById('epCat').value=p.supply_category||'';
-  document.getElementById('epQty').value=p.quantity;
-  document.getElementById('epUnit').value=p.unit||'';
-  document.getElementById('epRate').value=p.rate;
-  document.getElementById('epDateH').value=p.purchase_date;
-  SmartDate.setDateValue(document.getElementById('epDate'),p.purchase_date);
+  const p = allPurchases.find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('epId').value = p.id;
+  document.getElementById('epItem').value = p.item_name || '';
+  document.getElementById('epCat').value = p.supply_category || '';
+  if (document.getElementById('epThick')) document.getElementById('epThick').value = p.board_thickness || '';
+  toggleEditBoardFields();
+  document.getElementById('epQty').value = p.quantity || '';
+  document.getElementById('epUnit').value = p.unit || '';
+  document.getElementById('epRate').value = p.rate || '';
+  document.getElementById('epDateH').value = p.purchase_date;
+  SmartDate.setDateValue(document.getElementById('epDate'), p.purchase_date);
   calcEditPurchTotal();
   openModal('editPurchModal');
 }
+
 async function updatePurchase(){
-  const fd=new FormData();
-  fd.append('id',document.getElementById('epId').value);fd.append('project_id',PID);
-  fd.append('item_name',document.getElementById('epItem').value);fd.append('supply_category',document.getElementById('epCat').value);
-  fd.append('quantity',document.getElementById('epQty').value);fd.append('unit',document.getElementById('epUnit').value);
-  fd.append('rate',document.getElementById('epRate').value);fd.append('purchase_date',document.getElementById('epDateH').value||TODAY);
-  const r=await fetch(BASE_PATH + '/api/purchases.php?action=update',{method:'POST',body:fd});
-  const d=await r.json();
-  if(d.success){showToast('Updated!','success');closeModal('editPurchModal');loadPurchases();loadHeaderStats();}
-  else showToast(d.message||'Error','error');
+  const catVal = document.getElementById('epCat').value;
+  const isBoard = catVal === 'Board' || catVal === 'Board & Wood' || /board/i.test(catVal);
+  const item = document.getElementById('epItem').value.trim();
+  const thickVal = document.getElementById('epThick') ? document.getElementById('epThick').value.trim() : '';
+  const qty = parseFloat(document.getElementById('epQty').value) || 0;
+  const rate = parseFloat(document.getElementById('epRate').value) || 0;
+
+  if (!item) { showToast(isBoard ? 'Board type is required' : 'Item name is required', 'warning'); return; }
+  if (isBoard && !thickVal) {
+    showToast('Board thickness (mm) is required', 'warning');
+    document.getElementById('epThick').focus();
+    return;
+  }
+  if (qty <= 0 || rate <= 0) { showToast('Quantity and rate must be greater than 0', 'warning'); return; }
+
+  const fd = new FormData();
+  fd.append('id', document.getElementById('epId').value);
+  fd.append('project_id', PID);
+  fd.append('item_name', item);
+  fd.append('supply_category', catVal);
+  fd.append('board_type', item);
+  fd.append('board_thickness', thickVal);
+  fd.append('board_size', '');
+  fd.append('quantity', qty);
+  fd.append('unit', isBoard ? 'pcs' : (document.getElementById('epUnit').value || 'pcs'));
+  fd.append('rate', rate);
+  fd.append('purchase_date', document.getElementById('epDateH').value || TODAY);
+
+  try {
+    const r = await fetch(BASE_PATH + '/api/purchases.php?action=update', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.success) {
+      showToast('Updated!', 'success');
+      closeModal('editPurchModal');
+      loadPurchases();
+      loadHeaderStats();
+    } else {
+      showToast(d.message || 'Error updating purchase', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
 }
 async function delPurch(id){
     confirmDelete('Delete this purchase?',async function(){
@@ -726,7 +1200,7 @@ async function delPurch(id){
                 showToast('Deleted','success');
                 const btn = document.querySelector(`button[onclick="delPurch(${id})"]`);
                 if(btn) {
-                    const row = btn.closest('tr') || btn.closest('.printout-item');
+                    const row = btn.closest('tr') || btn.closest('.mobile-record-card') || btn.closest('.printout-item');
                     if(row) row.remove();
                 }
                 loadPurchases();loadHeaderStats();
@@ -741,15 +1215,12 @@ async function delPurch(id){
 // BILLING
 let billData=[];
 function onBillingContactChange(){
-  const cid=(document.getElementById('billContFilter')?.value)||'';
-  const btnAdv = document.getElementById('btnBillAdvance');
-  if (btnAdv) btnAdv.style.display = cid ? 'inline-block' : 'none';
   loadBilling();
 }
-function openAdvanceForSelected(){
+function openAddAdvanceModal(){
   const cid=(document.getElementById('billContFilter')?.value)||'';
-  if(!cid){showToast('Select a contractor first','warning');return;}
-  const sel=document.getElementById('advContractor');if(sel)sel.value=cid;
+  const sel=document.getElementById('advContractor');
+  if(sel && cid) sel.value=cid;
   openModal('addAdvModal');
 }
 async function loadBilling(){
@@ -758,15 +1229,57 @@ async function loadBilling(){
   if (btnPrint) btnPrint.style.display = cid ? 'inline-block' : 'none';
   const url=BASE_PATH + '/api/billing.php?action=list_advances_range&project_id='+PID+'&from=1900-01-01&to=2099-12-31'+(cid?'&contractor_id='+cid:'');
   const r=await fetch(url, {cache: 'no-store'});const d=await r.json();
+  allAttRecords = d.data || [];
   billData=d.data||[];const total=d.total||0;
   const billTotEl = document.getElementById('billTotal');
   if (billTotEl) billTotEl.textContent = fmt(total);
   const billTblTotEl = document.getElementById('billTableTotal');
   if (billTblTotEl) billTblTotEl.textContent = fmt(total);
   const body=document.getElementById('billTable');
-  if (!body) return;
-  if(!billData.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No advances</td></tr>';return;}
-  body.innerHTML=billData.map(a=>`<tr><td><strong>${esc(a.contractor_name||'-')}</strong></td><td class="td-amount">${fmt(a.amount)}</td><td>${esc(a.payment_method||'-')}</td><td>${esc(a.who_paid||'-')}</td><td>${fmtDate(a.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delAdv(${a.id})">&#10006;</button></td></tr>`).join('');
+  const mList=document.getElementById('billMobileList');
+  if(!billData.length){
+    if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No advances</td></tr>';
+    if(mList) mList.innerHTML='<div class="card" style="text-align:center;padding:32px 16px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No advances</div>';
+    return;
+  }
+  if(body) {
+    body.innerHTML=billData.map(a=>`<tr><td><strong>${esc(a.contractor_name||'-')}</strong></td><td class="td-amount">${fmt(a.amount)}</td><td>${esc(a.payment_method||'-')}</td><td>${esc(a.who_paid||'-')}</td><td>${fmtDate(a.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delAdv(${a.id})">&#10006;</button></td></tr>`).join('');
+  }
+  if(mList) {
+    mList.innerHTML=billData.map(a=>{
+      const initial = esc(a.contractor_name || 'C').charAt(0).toUpperCase();
+      return `
+      <div class="mobile-record-card">
+        <div class="mrc-header">
+          <div class="mrc-header-left">
+            <div class="mrc-avatar">${initial}</div>
+            <div class="mrc-title">${esc(a.contractor_name || '-')}</div>
+          </div>
+          <div class="mrc-corner-actions">
+            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delAdv(${a.id})">&#10006;</button>
+          </div>
+        </div>
+        <div class="mrc-title-row">
+          <span class="mrc-date"><i class="fa-regular fa-calendar" style="color:var(--text-muted);"></i> ${fmtDate(a.payment_date)}</span>
+          <div class="mrc-amount text-success">${fmt(a.amount)}</div>
+        </div>
+        <div class="mrc-meta-row">
+          <div class="mrc-meta-item">
+            <span>Paid by:</span> <strong>${esc(a.who_paid || '—')}</strong>
+          </div>
+          <div class="mrc-meta-item">
+            <span class="badge badge-neutral" style="font-size:10px;padding:1px 6px;">${esc(a.payment_method || 'Cash')}</span>
+          </div>
+        </div>
+        ${a.who_received || a.notes ? `
+        <div class="mrc-meta-row" style="font-size:11px;color:var(--text-muted);">
+          ${a.who_received ? `<div><span>Recv:</span> ${esc(a.who_received)}</div>` : ''}
+          ${a.notes ? `<div><span>Note:</span> ${esc(a.notes)}</div>` : ''}
+        </div>` : ''}
+      </div>
+      `;
+    }).join('');
+  }
 }
 async function saveAdvance(){
   const cid=document.getElementById('advContractor').value,amt=parseFloat(document.getElementById('advAmount').value)||0;
@@ -788,7 +1301,7 @@ async function delAdv(id){
                 showToast('Deleted','success');
                 const btn = document.querySelector(`button[onclick="delAdv(${id})"]`);
                 if(btn) {
-                    const row = btn.closest('tr') || btn.closest('.printout-item');
+                    const row = btn.closest('tr') || btn.closest('.mobile-record-card') || btn.closest('.printout-item');
                     if(row) row.remove();
                 }
                 loadBilling();loadHeaderStats();
@@ -906,17 +1419,119 @@ function printWorkerReport(type) {
   const to = document.getElementById('wrToH').value;
   window.open(BASE_PATH + '/print_worker_report?type=' + type + '&project_id=' + PID + '&worker_id=' + wid + '&from=' + from + '&to=' + to, '_blank');
 }
+let allAttRecords = [];
+function openEditAtt(id){
+  const a = allAttRecords.find(x => x.id == id);
+  if (!a) return;
+  document.getElementById('eaId').value = a.id;
+  document.getElementById('eaWorker').value = a.worker_id;
+  document.getElementById('eaWorkerName').textContent = a.worker_name || 'Worker';
+  document.getElementById('eaDailyRate').value = a.daily_rate || 0;
+  document.getElementById('eaMultiplier').value = parseFloat(a.attendance_multiplier) || 1;
+  document.getElementById('eaNotes').value = a.notes || '';
+  document.getElementById('eaDateH').value = a.work_date;
+  SmartDate.setDateValue(document.getElementById('eaDate'), a.work_date);
+  calcEditAttEarned();
+  openModal('editAttModal');
+}
+function calcEditAttEarned(){
+  const rate = parseFloat(document.getElementById('eaDailyRate').value) || 0;
+  const mult = parseFloat(document.getElementById('eaMultiplier').value) || 1;
+  const earned = Math.round(rate * mult);
+  document.getElementById('eaEarnedDisplay').value = 'Tk. ' + earned.toLocaleString();
+}
+async function updateAttendance(){
+  const id = document.getElementById('eaId').value;
+  const wid = document.getElementById('eaWorker').value;
+  const date = document.getElementById('eaDateH').value;
+  const rate = parseFloat(document.getElementById('eaDailyRate').value) || 0;
+  const mult = parseFloat(document.getElementById('eaMultiplier').value) || 1;
+  const notes = document.getElementById('eaNotes').value;
+  if (!id || !wid || rate <= 0) {
+    showToast('Daily rate must be greater than 0', 'warning');
+    return;
+  }
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('worker_id', wid);
+  fd.append('project_id', PID);
+  fd.append('work_date', date);
+  fd.append('daily_rate', rate);
+  fd.append('attendance_multiplier', mult);
+  fd.append('notes', notes);
+  try {
+    const r = await fetch(BASE_PATH + '/api/attendance.php?action=edit_attendance', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.success) {
+      showToast('Attendance updated!', 'success');
+      closeModal('editAttModal');
+      afterAttendanceSave();
+    } else {
+      showToast(d.message || 'Error updating attendance', 'error');
+    }
+  } catch(e) {
+    showToast('Connection error', 'error');
+  }
+}
+
 async function loadAttendance(){
   const wid=document.getElementById('attWorkerFilter').value,from=document.getElementById('attFromH').value,to=document.getElementById('attToH').value;
   let url=BASE_PATH + '/api/attendance.php?action=list_attendance&project_id='+PID;
   if(wid)url+='&worker_id='+wid;if(from)url+='&from='+from;if(to)url+='&to='+to;
   const r=await fetch(url, {cache: 'no-store'});const d=await r.json();
+  allAttRecords = d.data || [];
   const body=document.getElementById('attTable');
-  if(!d.success||!d.data.length){body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No attendance</td></tr>';document.getElementById('attEarnedTotal').textContent='Tk. 0';document.getElementById('attTableTotal').textContent='Tk. 0';return;}
+  const mList=document.getElementById('attMobileList');
+  if(!d.success||!d.data.length){
+    if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">No attendance</td></tr>';
+    if(mList) mList.innerHTML='<div class="card" style="text-align:center;padding:32px 16px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No attendance</div>';
+    document.getElementById('attEarnedTotal').textContent='Tk. 0';
+    document.getElementById('attTableTotal').textContent='Tk. 0';
+    return;
+  }
   let tot=0;
   const typeL={1:'Full',0.5:'Half',1.5:'OT',2:'2x'};
-  body.innerHTML=d.data.map(a=>{tot+=parseFloat(a.earned||0);return`<tr><td>${fmtDate(a.work_date)}</td><td><strong>${esc(a.worker_name||'-')}</strong></td><td><span class="badge badge-info">${typeL[parseFloat(a.attendance_multiplier)]||a.attendance_multiplier+'x'}</span></td><td>${fmt(a.daily_rate)}</td><td class="td-amount text-success">${fmt(a.earned)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delAtt(${a.id})">&#10006;</button></td></tr>`;}).join('');
-  document.getElementById('attEarnedTotal').textContent=fmt(tot);document.getElementById('attTableTotal').textContent=fmt(tot);
+  const typeBadgeClass={1:'badge-info',0.5:'badge-warning',1.5:'badge-primary',2:'badge-success'};
+  if(body) {
+    body.innerHTML=d.data.map(a=>{
+      tot+=parseFloat(a.earned||0);
+      return`<tr><td>${fmtDate(a.work_date)}</td><td><strong>${esc(a.worker_name||'-')}</strong></td><td><span class="badge badge-info">${typeL[parseFloat(a.attendance_multiplier)]||a.attendance_multiplier+'x'}</span></td><td>${fmt(a.daily_rate)}</td><td class="td-amount text-success">${fmt(a.earned)}</td><td><div style="display:inline-flex;gap:4px;"><button class="btn btn-ghost btn-sm btn-icon" onclick="openEditAtt(${a.id})" title="Edit">&#9998;</button><button class="btn btn-ghost btn-sm btn-icon" onclick="delAtt(${a.id})" title="Delete">&#10006;</button></div></td></tr>`;
+    }).join('');
+  }
+  if(mList) {
+    mList.innerHTML=d.data.map(a=>{
+      const initial = esc(a.worker_name || 'W').charAt(0).toUpperCase();
+      const mult = parseFloat(a.attendance_multiplier);
+      const bClass = typeBadgeClass[mult] || 'badge-info';
+      const bLabel = typeL[mult] ? `${typeL[mult]} (${mult}x)` : `${mult}x`;
+      return `
+      <div class="mobile-record-card">
+        <div class="mrc-header">
+          <div class="mrc-header-left">
+            <div class="mrc-avatar" style="background:#F0FDF4;color:#16A34A;border-color:rgba(22,163,74,0.15);">${initial}</div>
+            <div class="mrc-title">${esc(a.worker_name || '-')}</div>
+            <span class="badge ${bClass}" style="font-size:10px;padding:1px 6px;">${bLabel}</span>
+          </div>
+          <div class="mrc-corner-actions">
+            <button type="button" class="mrc-icon-btn" title="Edit" onclick="openEditAtt(${a.id})" style="color:var(--text-muted);font-size:13px;margin-right:4px;">&#9998;</button>
+            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delAtt(${a.id})">&#10006;</button>
+          </div>
+        </div>
+        <div class="mrc-title-row">
+          <span class="mrc-date"><i class="fa-regular fa-calendar" style="color:var(--text-muted);"></i> ${fmtDate(a.work_date)}</span>
+          <div class="mrc-amount text-success">${fmt(a.earned)}</div>
+        </div>
+        <div class="mrc-meta-row">
+          <div class="mrc-meta-item">
+            <span>Rate:</span> <strong>${fmt(a.daily_rate)}</strong>/day
+          </div>
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
+  document.getElementById('attEarnedTotal').textContent=fmt(tot);
+  document.getElementById('attTableTotal').textContent=fmt(tot);
 }
 async function loadWorkerSummary(){
   const r=await fetch(BASE_PATH + '/api/attendance.php?action=get_summary&project_id='+PID);const d=await r.json();
@@ -926,9 +1541,43 @@ async function loadWorkerSummary(){
 }
 async function loadLaborPayments(){
   const r=await fetch(BASE_PATH + '/api/attendance.php?action=list_payments&project_id='+PID);const d=await r.json();
-  const body=document.getElementById('laborPayTable');let tot=0;
-  if(!d.success||!d.data.length){body.innerHTML='<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted);">No payments</td></tr>';document.getElementById('attPaidTotal').textContent='Tk. 0';return;}
-  body.innerHTML=d.data.map(p=>{tot+=parseFloat(p.amount||0);return`<tr><td><strong>${esc(p.worker_name||'-')}</strong></td><td class="td-amount">${fmt(p.amount)}</td><td>${fmtDate(p.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delLP(${p.id})">&#10006;</button></td></tr>`;}).join('');
+  const body=document.getElementById('laborPayTable');
+  const mList=document.getElementById('laborPayMobileList');
+  let tot=0;
+  if(!d.success||!d.data.length){
+    if(body) body.innerHTML='<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted);">No payments</td></tr>';
+    if(mList) mList.innerHTML='<div class="card" style="text-align:center;padding:24px 16px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No payments</div>';
+    document.getElementById('attPaidTotal').textContent='Tk. 0';
+    return;
+  }
+  if(body) {
+    body.innerHTML=d.data.map(p=>{
+      tot+=parseFloat(p.amount||0);
+      return`<tr><td><strong>${esc(p.worker_name||'-')}</strong></td><td class="td-amount">${fmt(p.amount)}</td><td>${fmtDate(p.payment_date)}</td><td><button class="btn btn-ghost btn-sm btn-icon" onclick="delLP(${p.id})">&#10006;</button></td></tr>`;
+    }).join('');
+  }
+  if(mList) {
+    mList.innerHTML=d.data.map(p=>{
+      const initial = esc(p.worker_name || 'W').charAt(0).toUpperCase();
+      return `
+      <div class="mobile-record-card">
+        <div class="mrc-header">
+          <div class="mrc-header-left">
+            <div class="mrc-avatar" style="background:#FEF3C7;color:#D97706;border-color:rgba(217,119,6,0.15);">${initial}</div>
+            <div class="mrc-title">${esc(p.worker_name || '-')}</div>
+          </div>
+          <div class="mrc-corner-actions">
+            <button type="button" class="mrc-icon-btn mrc-btn-del" title="Delete" onclick="delLP(${p.id})">&#10006;</button>
+          </div>
+        </div>
+        <div class="mrc-title-row">
+          <span class="mrc-date"><i class="fa-regular fa-calendar" style="color:var(--text-muted);"></i> ${fmtDate(p.payment_date)}</span>
+          <div class="mrc-amount" style="color:var(--warning);">${fmt(p.amount)}</div>
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
   document.getElementById('attPaidTotal').textContent=fmt(tot);
 }
 async function saveLaborPayment(){
@@ -947,7 +1596,7 @@ async function delAtt(id){
                 showToast('Deleted','success');
                 const btn = document.querySelector(`button[onclick="delAtt(${id})"]`);
                 if(btn) {
-                    const row = btn.closest('tr') || btn.closest('.printout-item');
+                    const row = btn.closest('tr') || btn.closest('.mobile-record-card') || btn.closest('.printout-item');
                     if(row) row.remove();
                 }
                 loadAttendance();loadWorkerSummary();loadHeaderStats();
@@ -968,7 +1617,7 @@ async function delLP(id){
                 showToast('Deleted','success');
                 const btn = document.querySelector(`button[onclick="delLP(${id})"]`);
                 if(btn) {
-                    const row = btn.closest('tr') || btn.closest('.printout-item');
+                    const row = btn.closest('tr') || btn.closest('.mobile-record-card') || btn.closest('.printout-item');
                     if(row) row.remove();
                 }
                 loadLaborPayments();loadWorkerSummary();
@@ -1135,10 +1784,15 @@ async function delPrintout(id){
 //  UPDATE PROJECT 
 async function updateProject(){
   const name=document.getElementById('epName').value.trim();if(!name){showToast('Name required','warning');return;}
+  const startRaw = document.getElementById('epStartDateH').value || (window.SmartDate ? window.SmartDate.parse(document.getElementById('epStartDate').value) : '') || document.getElementById('epStartDate').value || '';
+  const endRaw   = document.getElementById('epEndDateH').value || (window.SmartDate ? window.SmartDate.parse(document.getElementById('epEndDate').value) : '') || document.getElementById('epEndDate').value || '';
+
   const fd=new FormData();fd.append('id',PID);fd.append('name',name);fd.append('status',document.getElementById('epStatus').value);
   fd.append('address',document.getElementById('epAddress').value);fd.append('client_name',document.getElementById('epClient').value);
   fd.append('client_phone',document.getElementById('epPhone').value);fd.append('estimated_budget',document.getElementById('epBudget').value||0);
-  fd.append('end_date',document.getElementById('epEndDateH').value||'');fd.append('notes',document.getElementById('epNotes').value);
+  fd.append('start_date',startRaw);
+  fd.append('end_date',endRaw);
+  fd.append('notes',document.getElementById('epNotes').value);
   const r=await fetch(BASE_PATH + '/api/projects.php?action=update',{method:'POST',body:fd});const d=await r.json();
   if(d.success){showToast('Project updated!','success');closeModal('editProjectModal');location.reload();}else showToast(d.message||'Error','error');
 }
@@ -1160,6 +1814,8 @@ async function openFinalBillModal(defaultType = 'contractor') {
     const projInput = form.querySelector('input[name="project_id"]');
     if (projInput) projInput.value = PID;
   }
+  const pNameEl = document.getElementById('fbProjectName');
+  if (pNameEl) pNameEl.textContent = <?= json_encode($project['name'] ?? 'Project') ?>;
   const typeSelect = document.getElementById('fbType');
   if (typeSelect) typeSelect.value = defaultType;
   await loadFbTargets();
@@ -1212,15 +1868,15 @@ async function fetchFinalBillData(targetId) {
       if (d.success) {
         if (d.data && d.data.length > 0) {
           d.data.forEach(item => {
-            addFbRow(item.item_name || item.description, item.total_qty || item.qty || 1, item.rate || '');
+            addFbRow(item.description || item.item_name, item.thickness || '', item.total_qty || item.qty || 1, item.rate || '');
             hasItems = true;
           });
         }
         if (d.attendance && d.attendance.length > 0) {
           d.attendance.forEach(att => {
-            const role = att.person_type === 'contractor' ? 'Contractor Work' : 'Crew Labor';
-            const desc = `${att.name} (${role}) — ${att.days} days @ Tk.${att.rate}`;
-            addFbRow(desc, att.days, att.rate || '');
+            const role = att.person_type === 'contractor' ? 'Contractor' : 'Crew Labor';
+            const desc = `${att.name} (${role})`;
+            addFbRow(desc, '', att.days, att.rate || '');
             hasItems = true;
           });
         }
@@ -1232,7 +1888,7 @@ async function fetchFinalBillData(targetId) {
       const d = await r.json();
       if (d.success && d.items && d.items.length > 0) {
         d.items.forEach(item => {
-          addFbRow(item.description, item.qty, item.rate);
+          addFbRow(item.description, item.thickness || '', item.qty, item.rate);
           hasItems = true;
         });
       }
@@ -1245,25 +1901,83 @@ async function fetchFinalBillData(targetId) {
   calcFbTotal();
 }
 
-function addFbRow(desc = '', qty = '', rate = '') {
+function addFbRow(desc = '', thickness = '', qty = '', rate = '') {
   const container = document.getElementById('fbItemsContainer');
   if (!container) return;
   const div = document.createElement('div');
-  div.className = 'bill-item-row three-col';
-  div.style.cssText = 'gap:8px;margin-bottom:8px;align-items:center;';
+  div.className = 'fb-row bill-item-row';
   div.innerHTML = `
-    <div style="display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" class="row-selector" style="width:18px;height:18px;cursor:pointer;" title="Select to group">
-      <input type="text" class="form-input bill-desc" placeholder="Description / Item name" value="${esc(desc)}" style="flex:1;">
+    <div class="fb-row-main">
+      <div class="fb-row-check-wrap">
+        <input type="checkbox" class="fb-checkbox row-selector" title="Select to group">
+      </div>
+      <div class="fb-row-desc-wrap">
+        <input type="text" class="fb-input bill-desc" placeholder="Description / Item name" value="${esc(desc)}">
+      </div>
+      <button type="button" class="fb-row-btn fb-row-del-mobile" onclick="removeFbRow(this)" title="Delete Row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" width="16" height="16">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
     </div>
-    <input type="number" class="form-input bill-qty" placeholder="Qty" value="${qty}" step="any" oninput="calcFbTotal()">
-    <div style="display:flex; gap:6px; align-items:center;">
-      <input type="number" class="form-input bill-rate" placeholder="Rate" value="${rate}" step="any" oninput="calcFbTotal()" style="flex:1;">
-      <button type="button" class="btn btn-ghost btn-sm btn-icon" onclick="this.closest('.bill-item-row').remove();calcFbTotal();" style="color:var(--danger);">&#10006;</button>
+    <div class="fb-row-sub">
+      <div class="fb-thick-col">
+        <label class="fb-mobile-sub-label">Thickness</label>
+        <input type="text" class="fb-input bill-thickness" placeholder="e.g. 12mm" value="${esc(thickness)}">
+      </div>
+      <div class="fb-qty-col">
+        <label class="fb-mobile-sub-label">Qty</label>
+        <input type="number" class="fb-input bill-qty" placeholder="Qty" value="${qty}" step="any" oninput="calcFbTotal()">
+      </div>
+      <div class="fb-rate-col">
+        <label class="fb-mobile-sub-label">Rate</label>
+        <input type="number" class="fb-input bill-rate" placeholder="Rate" value="${rate}" step="any" oninput="calcFbTotal()">
+      </div>
+      <div class="fb-actions-col">
+        <button type="button" class="fb-row-btn fb-row-clear-btn" onclick="clearFbRow(this)" title="Clear Row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" width="16" height="16">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button type="button" class="fb-row-btn fb-row-del-desktop" onclick="removeFbRow(this)" title="Delete Row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" width="16" height="16">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
     </div>
   `;
   container.appendChild(div);
   calcFbTotal();
+}
+
+function clearFbRow(btn) {
+  const row = btn.closest('.fb-row');
+  if (!row) return;
+  const desc = row.querySelector('.bill-desc');
+  const thick = row.querySelector('.bill-thickness');
+  const qty = row.querySelector('.bill-qty');
+  const rate = row.querySelector('.bill-rate');
+  if (desc) desc.value = '';
+  if (thick) thick.value = '';
+  if (qty) qty.value = '';
+  if (rate) rate.value = '';
+  calcFbTotal();
+}
+
+function removeFbRow(btn) {
+  const row = btn.closest('.fb-row');
+  if (!row) return;
+  row.remove();
+  calcFbTotal();
+}
+
+function toggleSelectAllFb(masterCb) {
+  const cbs = document.querySelectorAll('#fbItemsContainer .row-selector');
+  cbs.forEach(cb => cb.checked = masterCb.checked);
 }
 
 function calcFbTotal() {
@@ -1286,13 +2000,37 @@ function groupSelectedRows() {
   }
   let totalQty = 0;
   let descs = [];
+  let thicknesses = [];
   checkedRows.forEach(r => {
     const desc = r.querySelector('.bill-desc').value.trim();
+    const thick = r.querySelector('.bill-thickness') ? r.querySelector('.bill-thickness').value.trim() : '';
     if (desc) descs.push(desc);
+    if (thick) thicknesses.push(thick);
     totalQty += (parseFloat(r.querySelector('.bill-qty').value) || 0);
     r.remove();
   });
-  addFbRow(descs.join(', '), totalQty || 1, '');
+  totalQty = Math.round(totalQty * 100) / 100;
+  const uniqueDescs = [...new Set(descs)];
+  
+  let groupedThickness = '';
+  if (thicknesses.length > 0) {
+    const uniqueThick = [...new Set(thicknesses.filter(Boolean))];
+    if (uniqueThick.length === 1) {
+      groupedThickness = uniqueThick[0];
+    } else if (uniqueThick.length > 1) {
+      const nums = thicknesses.map(t => parseFloat(t.replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n));
+      if (nums.length > 0) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        groupedThickness = (min === max) ? min + 'mm' : min + 'mm - ' + max + 'mm';
+      } else {
+        groupedThickness = uniqueThick.join(', ');
+      }
+    }
+  }
+
+  addFbRow(uniqueDescs.join(', '), groupedThickness, totalQty || 1, '');
+  calcFbTotal();
 }
 
 function generateAndPrintFb() {
@@ -1306,11 +2044,13 @@ function generateAndPrintFb() {
   const items = [];
   rows.forEach(r => {
     const desc = r.querySelector('.bill-desc').value.trim();
+    const thick = r.querySelector('.bill-thickness') ? r.querySelector('.bill-thickness').value.trim() : '';
     const qty = parseFloat(r.querySelector('.bill-qty').value) || 0;
     const rate = parseFloat(r.querySelector('.bill-rate').value) || 0;
     if (desc || qty > 0) {
       items.push({
         description: desc,
+        thickness: thick,
         qty: qty,
         rate: rate,
         total: (qty * rate)

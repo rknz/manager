@@ -87,7 +87,7 @@
     btn.textContent = 'Verifying...';
     btn.disabled = true;
 
-    fetch('api/index.php?action=verify_password', {
+    fetch(BASE_PATH + '/api/index.php?action=verify_password', {
       method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: 'password=' + encodeURIComponent(pwd)

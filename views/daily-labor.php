@@ -34,60 +34,12 @@ include __DIR__ . '/../includes/header.php';
         <div class="empty-state" style="padding:24px;"><p>Select a project</p></div>
       </div>
     </div>
-    <!-- Payment Entry -->
-    <div class="card">
-      <div class="card-header"><h3>&#128176; Pay Worker</h3></div>
-      <div class="card-body" data-form-nav>
-        <div class="form-group">
-          <label class="form-label">Worker</label>
-          <select id="payWorker" class="form-select">
-            <option value="">-- Select Worker --</option>
-            <?php foreach($workers as $w): ?><option value="<?=$w['id']?>"><?=htmlspecialchars($w['name'])?></option><?php endforeach; ?>
-          </select>
-        </div>
-        <div class="two-col">
-          <div class="form-group">
-            <label class="form-label">Amount (Tk) <span class="required">*</span></label>
-            <input type="number" id="payAmount" class="form-input" placeholder="0">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input type="text" id="payDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="payDateHidden">
-            <input type="hidden" id="payDateHidden" value="<?=date('Y-m-d')?>">
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Who Paid</label>
-          <input type="text" id="payWho" class="form-input" value="<?=htmlspecialchars($_SESSION['username']??'')?>">
-        </div>
-        <button class="btn btn-success btn-full" data-save-btn onclick="savePayment()">&#128176; Record Payment</button>
-      </div>
-    </div>
   </div>
 </div>
 
 <script>
 var TODAY = '<?=date('Y-m-d')?>';
 function afterLaborAttendanceSave(){ loadWorkerSummary(); }
-async function savePayment() {
-  const pid = document.getElementById('dlProject').value;
-  const wid = document.getElementById('payWorker').value;
-  const amt = parseFloat(document.getElementById('payAmount').value)||0;
-  if (!pid||!wid||amt<=0) { showToast('Project, worker and amount required','warning'); return; }
-  const fd = new FormData();
-  fd.append('project_id',  pid);
-  fd.append('worker_id',   wid);
-  fd.append('amount',      amt);
-  fd.append('payment_date',document.getElementById('payDateHidden').value||TODAY);
-  fd.append('who_paid',    document.getElementById('payWho').value);
-  fd.append('payment_method','Cash');
-  try {
-    const r = await fetch(BASE_PATH + '/api/attendance.php?action=add_payment',{method:'POST',body:fd});
-    const d = await r.json();
-    if (d.success) { showToast('Payment recorded!','success'); document.getElementById('payAmount').value=''; loadWorkerSummary(); }
-    else { showToast(d.message||'Error','error'); }
-  } catch(e) { showToast('Connection error','error'); }
-}
 async function loadWorkerSummary() {
   const pid = document.getElementById('dlProject').value;
   if (!pid) return;
@@ -107,11 +59,6 @@ async function loadWorkerSummary() {
 </div>`).join('');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function fmtDate(d){if(!d)return'-';var dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});}
-document.addEventListener('DOMContentLoaded',function(){
-  SmartDate.initAll();
-  SmartDate.setDateValue(document.getElementById('payDate'),TODAY);
-});
 </script>
 <?php
 $attEntryWorkers  = $workers;

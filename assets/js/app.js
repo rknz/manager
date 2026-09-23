@@ -104,7 +104,7 @@
               last = item.type;
             }
             var href = item.type === 'project' ? BASE_PATH + '/project-detail?id=' + item.id
-                     : item.type === 'contractor' ? '/contractors'
+                     : item.type === 'contractor' ? BASE_PATH + '/contractors'
                      : BASE_PATH + '/project-detail?id=' + (item.project_id || '');
             html += '<a href="' + href + '" class="search-dropdown-item">'
               + '<div class="search-icon" style="background:' + (colors[item.type] || '#eee') + '">' + (types[item.type] || '?') + '</div>'
@@ -141,21 +141,87 @@
       var rect = btn.getBoundingClientRect();
       var dd = document.createElement('div');
       dd.id = 'userMenuDropdown';
-      dd.style.cssText = 'position:fixed;top:' + (rect.bottom + 8) + 'px;right:' + (window.innerWidth - rect.right) + 'px;background:var(--card-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border);z-index:9999;min-width:180px;overflow:hidden;animation:fadeIn .2s ease;';
+      dd.style.cssText = 'position:fixed;top:' + (rect.bottom + 8) + 'px;right:' + Math.max(12, window.innerWidth - rect.right) + 'px;background:var(--card-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border);z-index:9999;min-width:190px;overflow:hidden;animation:fadeIn .2s ease;';
+      var menuHref = function (path) { return '<a href="' + BASE_PATH + path + '" style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'">'; };
       dd.innerHTML = [
-        '<a href="" + BASE_PATH + "/settings" style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'">&#9881; Settings</a>',
-        '<a href="" + BASE_PATH + "/backup"   style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'">&#128274; Backup Data</a>',
+        menuHref('/settings') + '<span style="font-size:14px;">&#9881;</span> Settings</a>',
+        menuHref('/backup') + '<span style="font-size:14px;">&#128274;</span> Backup Data</a>',
+        '<a href="#" id="menuUploadPhotoBtn" style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;cursor:pointer;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'"><span style="font-size:14px;">&#128247;</span> Upload Photo</a>',
         '<div style="height:1px;background:var(--border);"></div>',
-        '<a href="#" onclick="doLogout();return false;" style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--danger);transition:background .15s;" onmouseover="this.style.background=\'var(--danger-bg)\'" onmouseout="this.style.background=\'\'">&#10006; Logout</a>',
+        '<a href="#" onclick="doLogout();return false;" style="display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;color:var(--danger);transition:background .15s;" onmouseover="this.style.background=\'var(--danger-bg)\'" onmouseout="this.style.background=\'\'"><span style="font-size:14px;">&#10006;</span> Logout</a>',
       ].join('');
       document.body.appendChild(dd);
-      setTimeout(function () { document.addEventListener('click', function h(e) { if (!dd.contains(e.target) && e.target !== btn) { dd.remove(); document.removeEventListener('click', h); } }); }, 10);
+
+      var uploadPhotoBtn = dd.querySelector('#menuUploadPhotoBtn');
+      if (uploadPhotoBtn) {
+        uploadPhotoBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dd.remove();
+          var fileInput = document.getElementById('avatar-upload');
+          if (fileInput) fileInput.click();
+        });
+      }
+
+      setTimeout(function () {
+        document.addEventListener('click', function h(e) {
+          if (!dd.contains(e.target) && !btn.contains(e.target)) {
+            dd.remove();
+            document.removeEventListener('click', h);
+          }
+        });
+      }, 10);
     });
   }
 
   window.doLogout = function () {
     fetch(BASE_PATH + '/api/index.php?action=logout').then(function () { window.location = BASE_PATH + '/login'; });
   };
+
+  function initAvatarUpload() {
+    var fileInput = document.getElementById('avatar-upload');
+    if (!fileInput) return;
+    fileInput.addEventListener('change', function () {
+      if (!fileInput.files || !fileInput.files[0]) return;
+      var file = fileInput.files[0];
+      var formData = new FormData();
+      formData.append('photo', file);
+
+      showToast('Uploading profile picture...', 'info');
+      fetch(BASE_PATH + '/api/index.php?action=upload_avatar', {
+        method: 'POST',
+        body: formData
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success && data.photo) {
+          showToast('Profile picture updated successfully!', 'success');
+          var avatarContainer = document.getElementById('topbarUserAvatar');
+          if (avatarContainer) {
+            avatarContainer.classList.add('has-photo');
+            var img = document.getElementById('topbarAvatarImg');
+            var initial = document.getElementById('topbarAvatarInitial');
+            if (initial) initial.remove();
+            if (!img) {
+              img = document.createElement('img');
+              img.id = 'topbarAvatarImg';
+              img.className = 'user-avatar-img';
+              avatarContainer.insertBefore(img, avatarContainer.firstChild);
+            }
+            img.src = BASE_PATH + '/' + data.photo.replace(/^\/+/, '') + '?t=' + Date.now();
+          }
+        } else {
+          showToast(data.message || 'Failed to upload photo', 'error');
+        }
+      })
+      .catch(function () {
+        showToast('Network error while uploading photo', 'error');
+      })
+      .finally(function () {
+        fileInput.value = '';
+      });
+    });
+  }
 
   /* ---*/
   function initQuickAdd() {
@@ -168,16 +234,17 @@
       var dd = document.createElement('div');
       dd.id = 'quickAddDropdown';
       dd.style.cssText = 'position:fixed;top:' + (rect.bottom + 8) + 'px;right:' + (window.innerWidth - rect.right) + 'px;background:var(--card-bg);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border);z-index:9999;min-width:190px;overflow:hidden;animation:fadeIn .2s ease;';
+      var quickLink = function (label, href, onclick) {
+        return '<a href="' + (href || 'javascript:void(0)') + '"' + (onclick ? ' onclick="' + onclick + ';return false;"' : '') + ' style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;cursor:pointer;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'">' + label + '</a>';
+      };
       var items = [
-        ['&#128722; Quick Purchase', '/quick-purchase'],
-        ['&#128736; Add Labor',      '/daily-labor'],
-        ['&#128197; Add Schedule',   '#schedule'],
-        ['&#128193; New Project',    '/projects#new'],
+        quickLink('&#128722; Quick Purchase', BASE_PATH + '/quick-purchase'),
+        quickLink('&#128736; Add Labor',      BASE_PATH + '/daily-labor'),
+        quickLink('&#128197; Add Schedule',   null, 'showAddScheduleModal()'),
+        quickLink('&#128193; New Project',    BASE_PATH + '/projects#new'),
       ];
       dd.innerHTML = '<div style="padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);background:var(--border-light);">Quick Add</div>'
-        + items.map(function (i) {
-          return '<a href="' + i[1] + '" style="display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;color:var(--text-primary);transition:background .15s;" onmouseover="this.style.background=\'var(--border-light)\'" onmouseout="this.style.background=\'\'">' + i[0] + '</a>';
-        }).join('');
+        + items.join('');
       document.body.appendChild(dd);
       setTimeout(function () { document.addEventListener('click', function h(e) { if (!dd.contains(e.target) && e.target !== btn) { dd.remove(); document.removeEventListener('click', h); } }); }, 10);
     });
@@ -235,6 +302,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     initSearch();
     initUserMenu();
+    initAvatarUpload();
     initQuickAdd();
     loadNotifCount();
     // Animate page content
@@ -265,16 +333,28 @@
       const newMain = doc.getElementById('mainContent');
       if (!newMain) { window.location.href = url; return; }
       
-      main.innerHTML = newMain.innerHTML;
+// Extract <main> content from the raw HTML so modal overlays and inline
+      // scripts are preserved even when the parser restructures their position.
       main.className = newMain.className;
+      var rawMain = /<main\b[^>]*>([\s\S]*?)<\/main>/.exec(html);
+      main.innerHTML = (rawMain && rawMain[1]) ? rawMain[1] : newMain.innerHTML;
       
       document.title = doc.title;
       var newTitle = doc.getElementById('topbarTitle');
       if (newTitle) {
         var currentTitle = document.getElementById('topbarTitle');
         if (currentTitle) currentTitle.innerHTML = newTitle.innerHTML;
-        var mobileTitle = document.querySelector('.mobile-greeting-title');
-        if (mobileTitle) mobileTitle.innerHTML = newTitle.innerHTML;
+      }
+      var curMobileBar = document.querySelector('.mobile-greeting-bar');
+      var newMobileBar = doc.querySelector('.mobile-greeting-bar');
+      if (newMobileBar) {
+        if (curMobileBar) {
+          curMobileBar.outerHTML = newMobileBar.outerHTML;
+        } else {
+          main.parentNode.insertBefore(newMobileBar.cloneNode(true), main);
+        }
+      } else if (curMobileBar) {
+        curMobileBar.remove();
       }
       
       document.querySelectorAll('.sidebar-nav-item').forEach(function(el) { el.classList.remove('active'); });
@@ -285,7 +365,7 @@
         if (currentLink) currentLink.classList.add('active');
       }
       
-      var scripts = newMain.querySelectorAll('script');
+      var scripts = main.querySelectorAll('script');
       scripts.forEach(function(s) {
         var newScript = document.createElement('script');
         if (s.src) {
@@ -320,10 +400,15 @@
   document.addEventListener('click', function(e) {
     var link = e.target.closest('a');
     if (!link || !link.href) return;
-    if (link.target === '_blank' || link.hasAttribute('download') || link.getAttribute('href').startsWith('#') || link.getAttribute('href').startsWith('javascript:')) return;
+    if (link.target === '_blank' || link.hasAttribute('download') || link.hasAttribute('data-no-pjax') || link.getAttribute('href').startsWith('#') || link.getAttribute('href').startsWith('javascript:')) return;
     if (e.ctrlKey || e.metaKey || e.shiftKey) return;
     
     var url = new URL(link.href);
+    // Bypass PJAX for heavy editor/print/estimate views that need full clean browser execution
+    if (url.pathname.includes('/estimates') || url.pathname.includes('/estimate-builder') || url.pathname.includes('/estimate-view') || url.pathname.includes('/estimate-catalog') || url.pathname.includes('/print-bill') || url.pathname.includes('/print_') || url.pathname.includes('/print/')) {
+      return;
+    }
+
     if (url.origin === window.location.origin && url.pathname.startsWith(BASE_PATH)) {
       e.preventDefault();
       navigateTo(url.pathname + url.search);
@@ -334,4 +419,44 @@
     navigateTo(window.location.pathname + window.location.search, false);
   });
 
+  /* ===================================================
+     LIGHTWEIGHT CLIENT STORAGE / CACHE (MOBILE SPEED)
+     =================================================== */
+  window.AppCache = {
+    set: function(key, data, ttlMs) {
+      try {
+        var payload = {
+          data: data,
+          exp: ttlMs ? Date.now() + ttlMs : 0
+        };
+        sessionStorage.setItem('profix_' + key, JSON.stringify(payload));
+      } catch(e) {}
+    },
+    get: function(key) {
+      try {
+        var raw = sessionStorage.getItem('profix_' + key);
+        if (!raw) return null;
+        var payload = JSON.parse(raw);
+        if (payload.exp && Date.now() > payload.exp) {
+          sessionStorage.removeItem('profix_' + key);
+          return null;
+        }
+        return payload.data;
+      } catch(e) {
+        return null;
+      }
+    },
+    remove: function(key) {
+      try { sessionStorage.removeItem('profix_' + key); } catch(e) {}
+    },
+    clear: function() {
+      try {
+        Object.keys(sessionStorage).forEach(function(k) {
+          if (k.startsWith('profix_')) sessionStorage.removeItem(k);
+        });
+      } catch(e) {}
+    }
+  };
+
 }());
+

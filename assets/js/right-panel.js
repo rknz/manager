@@ -1,14 +1,18 @@
 // right-panel.js
 var currentCalMonth = new Date();
-var TODAY = new Date().toISOString().split('T')[0];
+if (typeof TODAY === 'undefined') {
+  var _d = new Date();
+  TODAY = _d.getFullYear() + '-' + String(_d.getMonth() + 1).padStart(2, '0') + '-' + String(_d.getDate()).padStart(2, '0');
+}
 
 function renderQuickSummary(s) {
   const box = document.getElementById('quickSummaryBox');
   if (!box) return;
+  const q = s.quick_summary || {};
   box.innerHTML = `
-    <div class="summary-row"><span class="summary-label">&#128193; Active Projects</span><span class="summary-value">${document.querySelectorAll('.project-card').length || s.active_projects || 0}</span></div>
-    <div class="summary-row"><span class="summary-label">&#128176; Today Payments</span><span class="summary-value green">Tk. ${parseFloat(s.today_payments||0).toLocaleString('en-BD',{maximumFractionDigits:0})}</span></div>
-    <div class="summary-row"><span class="summary-label">&#128170; Labor Present</span><span class="summary-value">${s.labor_present||0} / ${s.labor_total||0}</span></div>
+    <div class="summary-row"><span class="summary-label">&#128193; Active Projects</span><span class="summary-value">${s.ongoing || 0}</span></div>
+    <div class="summary-row"><span class="summary-label">&#128176; Today Payments</span><span class="summary-value green">Tk. ${parseFloat(q.today_payments||0).toLocaleString('en-BD',{maximumFractionDigits:0})}</span></div>
+    <div class="summary-row"><span class="summary-label">&#128170; Labor Present</span><span class="summary-value">${q.labor_present||0} / ${q.labor_total||0}</span></div>
   `;
 }
 
@@ -163,7 +167,7 @@ async function loadRightPanelData() {
     const r = await fetch(BASE_PATH + '/api/index.php?action=get_dashboard_stats');
     const d = await r.json();
     if (!d.success) return;
-    renderQuickSummary(d.data.quick_summary || {});
+    renderQuickSummary(d.data);
     renderTodaySchedules(d.data.today_schedules || []);
   } catch(e) { console.error(e); }
 }

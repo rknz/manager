@@ -63,6 +63,7 @@ include __DIR__ . '/../includes/header.php';
       <p>No ongoing projects found.</p>
     </div>
   <?php else: ?>
+    <div class="fb-projects-grid">
     <?php foreach($projects as $p): 
       $img = !empty($p['primary_image']) ? $p['primary_image'] : (!empty($p['project_image']) ? $p['project_image'] : '');
       $loc = !empty($p['address']) ? $p['address'] : (!empty($p['client_name']) ? $p['client_name'] : 'Dhaka');
@@ -78,8 +79,8 @@ include __DIR__ . '/../includes/header.php';
           <?php endif; ?>
 
           <div class="fb-project-info">
-            <h4 class="fb-project-name"><?= htmlspecialchars($p['name']) ?></h4>
-            <div class="fb-project-loc">
+            <h4 class="fb-project-name" title="<?= htmlspecialchars($p['name']) ?>"><?= htmlspecialchars($p['name']) ?></h4>
+            <div class="fb-project-loc" title="<?= htmlspecialchars($loc) ?>">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               <span><?= htmlspecialchars($loc) ?></span>
             </div>
@@ -114,6 +115,7 @@ include __DIR__ . '/../includes/header.php';
         </button>
       </div>
     <?php endforeach; ?>
+    </div>
   <?php endif; ?>
 
   <!-- BOTTOM NOTE -->
@@ -131,60 +133,148 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- GENERATE FINAL BILL MODAL -->
 <div class="modal-overlay" id="generateFinalBillModal">
-  <div class="modal modal-lg" data-form-nav>
-    <div class="modal-header">
-      <h3 id="fbModalTitle">&#128247; Generate Final Bill</h3>
-      <div class="modal-close" onclick="closeModal('generateFinalBillModal')">&times;</div>
+  <div class="modal final-bill-modal" data-form-nav>
+    <div class="fb-mobile-drag-handle"></div>
+    <div class="fb-modal-header">
+      <div class="fb-header-left">
+        <div class="fb-header-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        </div>
+        <div class="fb-header-text">
+          <h3 id="fbModalTitle">Final Bill &mdash; <span id="fbProjectName">Project</span></h3>
+          <p class="fb-header-subtitle">Generate and print final bill for completed projects.</p>
+        </div>
+      </div>
+      <button type="button" class="fb-close-btn" onclick="closeModal('generateFinalBillModal')" aria-label="Close">&times;</button>
     </div>
-    <div class="modal-body">
+    <div class="fb-modal-body">
       <form id="finalBillForm" action="<?= $basePath ?>/print_custom_bill" method="POST" target="_blank">
         <input type="hidden" name="project_id" id="fbProjectId" value="">
         <input type="hidden" name="items_json" id="fbItemsJson" value="[]">
-        
-        <div class="two-col">
-          <div class="form-group">
-            <label class="form-label">Bill Type</label>
-            <select id="fbType" name="bill_type" class="form-select" onchange="loadFbTargets()">
+
+        <div class="fb-top-grid">
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+              Bill Type
+            </label>
+            <select id="fbType" name="bill_type" class="fb-select" onchange="loadFbTargets()">
               <option value="contractor">Contractor Bill</option>
               <option value="labor">Labor / Worker Bill</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Select Person <span class="required">*</span></label>
-            <select id="fbTarget" name="target_id" class="form-select" onchange="fetchFinalBillData(this.value)" required>
+
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Select Person <span class="required" style="color:#DC2626;">*</span>
+            </label>
+            <select id="fbTarget" name="target_id" class="fb-select" onchange="fetchFinalBillData(this.value)" required>
               <option value="">-- Select --</option>
             </select>
           </div>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label">Bill Date</label>
-          <input type="text" id="fbDate" class="form-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="fbDateH">
-          <input type="hidden" id="fbDateH" name="bill_date" value="<?=date('Y-m-d')?>">
-        </div>
-        
-        <div style="margin:16px 0 8px 0; display:flex; justify-content:space-between; align-items:center;">
-          <label class="form-label" style="margin:0; font-weight:700;">Bill Items</label>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="addFbRow()">+ Add Row</button>
+
+          <div class="fb-field-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Bill Date
+            </label>
+            <div class="fb-date-input-wrap">
+              <input type="text" id="fbDate" class="fb-input smart-date" placeholder="<?=date('j/n/y')?>" data-date-target="fbDateH" value="<?=date('j/n/y')?>">
+              <input type="hidden" id="fbDateH" name="bill_date" value="<?=date('Y-m-d')?>">
+            </div>
+          </div>
+
+          <div class="fb-field-group fb-items-header-group">
+            <label class="fb-field-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+              Bill Items
+            </label>
+            <button type="button" class="fb-add-row-btn" onclick="addFbRow()">
+              + Add Row
+            </button>
+          </div>
         </div>
 
-        <div id="fbItemsContainer" style="max-height:280px; overflow-y:auto; padding-right:4px;">
-          <!-- Dynamic item rows will be placed here -->
+        <div class="fb-table-section">
+          <div class="fb-table-header">
+            <div class="fb-th-col fb-col-check">
+              <input type="checkbox" id="fbSelectAll" class="fb-checkbox" onchange="toggleSelectAllFb(this)">
+            </div>
+            <div class="fb-th-col fb-col-desc">Item / Description</div>
+            <div class="fb-th-col fb-col-thick">Thickness</div>
+            <div class="fb-th-col fb-col-qty">Qty</div>
+            <div class="fb-th-col fb-col-rate">Rate</div>
+            <div class="fb-th-col fb-col-total">Total</div>
+            <div class="fb-th-col fb-col-del">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="16" height="16">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+          </div>
+          <div id="fbItemsContainer" class="fb-items-container"></div>
         </div>
 
-        <div style="display:flex; gap:10px; margin:12px 0 16px 0;">
-          <button type="button" class="btn btn-outline btn-sm" onclick="groupSelectedRows()">&#128279; Group Selected Rows</button>
+        <div class="fb-group-action-row">
+          <button type="button" class="fb-group-btn" onclick="groupSelectedRows()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            Group Selected Rows
+          </button>
         </div>
 
-        <div style="background:var(--warning-bg); padding:14px 18px; border-radius:var(--radius-md); display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:700;">Grand Total</span>
-          <span id="fbGrandTotal" style="font-family:'Poppins','Noto Sans Bengali',sans-serif; font-weight:800; font-size:20px; color:#B45309;">Tk. 0</span>
+        <div class="fb-grand-total-strip">
+          <div class="fb-gt-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#9C1F24" stroke-width="2" width="20" height="20">
+              <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"></path>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="8" y1="10" x2="16" y2="10"></line>
+              <line x1="8" y1="14" x2="12" y2="14"></line>
+            </svg>
+            <span>Grand Total</span>
+          </div>
+          <div class="fb-gt-val" id="fbGrandTotal">Tk. 0</div>
+        </div>
+
+        <div class="fb-modal-footer">
+          <button type="button" class="fb-btn-cancel" onclick="closeModal('generateFinalBillModal')">Cancel</button>
+          <button type="button" class="fb-btn-print" onclick="generateAndPrintFb()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Generate & Print
+          </button>
         </div>
       </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('generateFinalBillModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="generateAndPrintFb()">Generate & Print</button>
     </div>
   </div>
 </div>
@@ -203,7 +293,8 @@ function fmt(n) {
 async function openFinalBillForProject(projectId, projectName) {
   currentProjectId = projectId;
   document.getElementById('fbProjectId').value = projectId;
-  document.getElementById('fbModalTitle').innerHTML = '&#128247; Final Bill &mdash; ' + esc(projectName);
+  const pNameEl = document.getElementById('fbProjectName');
+  if (pNameEl) pNameEl.textContent = projectName;
   document.getElementById('fbType').value = 'contractor';
   document.getElementById('fbItemsContainer').innerHTML = '';
   addFbRow();
@@ -253,15 +344,15 @@ async function fetchFinalBillData(targetId) {
       if (d.success) {
         if (d.data && d.data.length > 0) {
           d.data.forEach(item => {
-            addFbRow(item.item_name || item.description, item.total_qty || item.qty || 1, item.rate || '');
+            addFbRow(item.description || item.item_name, item.thickness || '', item.total_qty || item.qty || 1, item.rate || '');
             hasItems = true;
           });
         }
         if (d.attendance && d.attendance.length > 0) {
           d.attendance.forEach(att => {
-            const role = att.person_type === 'contractor' ? 'Contractor Work' : 'Crew Labor';
-            const desc = `${att.name} (${role}) — ${att.days} days @ Tk.${att.rate}`;
-            addFbRow(desc, att.days, att.rate || '');
+            const role = att.person_type === 'contractor' ? 'Contractor' : 'Crew Labor';
+            const desc = `${att.name} (${role})`;
+            addFbRow(desc, '', att.days, att.rate || '');
             hasItems = true;
           });
         }
@@ -273,7 +364,7 @@ async function fetchFinalBillData(targetId) {
       const d = await r.json();
       if (d.success && d.items && d.items.length > 0) {
         d.items.forEach(item => {
-          addFbRow(item.description, item.qty, item.rate);
+          addFbRow(item.description, item.thickness || '', item.qty, item.rate);
           hasItems = true;
         });
       }
@@ -286,24 +377,83 @@ async function fetchFinalBillData(targetId) {
   calcFbTotal();
 }
 
-function addFbRow(desc = '', qty = '', rate = '') {
+function addFbRow(desc = '', thickness = '', qty = '', rate = '') {
   const container = document.getElementById('fbItemsContainer');
+  if (!container) return;
   const div = document.createElement('div');
-  div.className = 'bill-item-row three-col';
-  div.style.cssText = 'gap:8px; margin-bottom:8px; align-items:center;';
+  div.className = 'fb-row bill-item-row';
   div.innerHTML = `
-    <div style="display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" class="row-selector" style="width:18px;height:18px;cursor:pointer;" title="Select to group">
-      <input type="text" class="form-input bill-desc" placeholder="Description / Item name" value="${esc(desc)}" style="flex:1;">
+    <div class="fb-row-main">
+      <div class="fb-row-check-wrap">
+        <input type="checkbox" class="fb-checkbox row-selector" title="Select to group">
+      </div>
+      <div class="fb-row-desc-wrap">
+        <input type="text" class="fb-input bill-desc" placeholder="Description / Item name" value="${esc(desc)}">
+      </div>
+      <button type="button" class="fb-row-btn fb-row-del-mobile" onclick="removeFbRow(this)" title="Delete Row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" width="16" height="16">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
     </div>
-    <input type="number" class="form-input bill-qty" placeholder="Qty" value="${qty}" step="any" oninput="calcFbTotal()">
-    <div style="display:flex; gap:6px; align-items:center;">
-      <input type="number" class="form-input bill-rate" placeholder="Rate" value="${rate}" step="any" oninput="calcFbTotal()" style="flex:1;">
-      <button type="button" class="btn btn-ghost btn-sm btn-icon" onclick="this.closest('.bill-item-row').remove();calcFbTotal();" style="color:var(--danger);">&#10006;</button>
+    <div class="fb-row-sub">
+      <div class="fb-thick-col">
+        <label class="fb-mobile-sub-label">Thickness</label>
+        <input type="text" class="fb-input bill-thickness" placeholder="e.g. 12mm" value="${esc(thickness)}">
+      </div>
+      <div class="fb-qty-col">
+        <label class="fb-mobile-sub-label">Qty</label>
+        <input type="number" class="fb-input bill-qty" placeholder="Qty" value="${qty}" step="any" oninput="calcFbTotal()">
+      </div>
+      <div class="fb-rate-col">
+        <label class="fb-mobile-sub-label">Rate</label>
+        <input type="number" class="fb-input bill-rate" placeholder="Rate" value="${rate}" step="any" oninput="calcFbTotal()">
+      </div>
+      <div class="fb-actions-col">
+        <button type="button" class="fb-row-btn fb-row-clear-btn" onclick="clearFbRow(this)" title="Clear Row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" width="16" height="16">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <button type="button" class="fb-row-btn fb-row-del-desktop" onclick="removeFbRow(this)" title="Delete Row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" width="16" height="16">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
     </div>
   `;
   container.appendChild(div);
   calcFbTotal();
+}
+
+function clearFbRow(btn) {
+  const row = btn.closest('.fb-row');
+  if (!row) return;
+  const desc = row.querySelector('.bill-desc');
+  const thick = row.querySelector('.bill-thickness');
+  const qty = row.querySelector('.bill-qty');
+  const rate = row.querySelector('.bill-rate');
+  if (desc) desc.value = '';
+  if (thick) thick.value = '';
+  if (qty) qty.value = '';
+  if (rate) rate.value = '';
+  calcFbTotal();
+}
+
+function removeFbRow(btn) {
+  const row = btn.closest('.fb-row');
+  if (!row) return;
+  row.remove();
+  calcFbTotal();
+}
+
+function toggleSelectAllFb(masterCb) {
+  const cbs = document.querySelectorAll('#fbItemsContainer .row-selector');
+  cbs.forEach(cb => cb.checked = masterCb.checked);
 }
 
 function calcFbTotal() {
@@ -325,13 +475,37 @@ function groupSelectedRows() {
   }
   let totalQty = 0;
   let descs = [];
+  let thicknesses = [];
   checkedRows.forEach(r => {
     const desc = r.querySelector('.bill-desc').value.trim();
+    const thick = r.querySelector('.bill-thickness') ? r.querySelector('.bill-thickness').value.trim() : '';
     if (desc) descs.push(desc);
+    if (thick) thicknesses.push(thick);
     totalQty += (parseFloat(r.querySelector('.bill-qty').value) || 0);
     r.remove();
   });
-  addFbRow(descs.join(', '), totalQty || 1, '');
+  totalQty = Math.round(totalQty * 100) / 100;
+  const uniqueDescs = [...new Set(descs)];
+  
+  let groupedThickness = '';
+  if (thicknesses.length > 0) {
+    const uniqueThick = [...new Set(thicknesses.filter(Boolean))];
+    if (uniqueThick.length === 1) {
+      groupedThickness = uniqueThick[0];
+    } else if (uniqueThick.length > 1) {
+      const nums = thicknesses.map(t => parseFloat(t.replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n));
+      if (nums.length > 0) {
+        const min = Math.min(...nums);
+        const max = Math.max(...nums);
+        groupedThickness = (min === max) ? min + 'mm' : min + 'mm - ' + max + 'mm';
+      } else {
+        groupedThickness = uniqueThick.join(', ');
+      }
+    }
+  }
+
+  addFbRow(uniqueDescs.join(', '), groupedThickness, totalQty || 1, '');
+  calcFbTotal();
 }
 
 function generateAndPrintFb() {
@@ -345,11 +519,13 @@ function generateAndPrintFb() {
   const items = [];
   rows.forEach(r => {
     const desc = r.querySelector('.bill-desc').value.trim();
+    const thick = r.querySelector('.bill-thickness') ? r.querySelector('.bill-thickness').value.trim() : '';
     const qty = parseFloat(r.querySelector('.bill-qty').value) || 0;
     const rate = parseFloat(r.querySelector('.bill-rate').value) || 0;
     if (desc || qty > 0) {
       items.push({
         description: desc,
+        thickness: thick,
         qty: qty,
         rate: rate,
         total: (qty * rate)

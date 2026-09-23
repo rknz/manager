@@ -6,18 +6,39 @@ $role        = $_SESSION['role']    ?? 'user';
 $userInitial = strtoupper(substr($username, 0, 1));
 $today       = date('D, d M Y');
 $hasRightPanel = $hasRightPanel ?? false;
+
+// Auto-load user photo if available
+$userPhoto = $_SESSION['photo'] ?? null;
+if (empty($userPhoto)) {
+    try {
+        if (!isset($pdo)) require_once __DIR__ . '/../config/db.php';
+        if (!empty($_SESSION['user_id'])) {
+            $uStmt = $pdo->prepare("SELECT photo FROM app_users WHERE id = ?");
+            $uStmt->execute([$_SESSION['user_id']]);
+            $fetchedPhoto = $uStmt->fetchColumn();
+        } elseif (!empty($_SESSION['username'])) {
+            $uStmt = $pdo->prepare("SELECT photo FROM app_users WHERE username = ?");
+            $uStmt->execute([$_SESSION['username']]);
+            $fetchedPhoto = $uStmt->fetchColumn();
+        }
+        if (!empty($fetchedPhoto)) {
+            $userPhoto = $fetchedPhoto;
+            $_SESSION['photo'] = $fetchedPhoto;
+        }
+    } catch (\Throwable $e) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= htmlspecialchars($pageTitle ?? 'Lily Interiors') ?> — Profix</title>
-  <meta name="description" content="Profix — Interior Project Management by Lily Interiors">
+  <title><?= htmlspecialchars($pageTitle ?? 'Dashboard') ?> - Project Management of LILY INTERIORSBD</title>
+  <meta name="description" content="Project Management of LILY INTERIORSBD">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=Noto+Sans+Bengali:wght@100..900&family=Hind+Siliguri:wght@300;400;500;600;700&family=Potta+One&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="<?= $basePath ?>/assets/css/style.css?v=2.8.0">
+  <link rel="stylesheet" href="<?= $basePath ?>/assets/css/style.css?v=3.6.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" referrerpolicy="no-referrer">
 <script>const BASE_PATH = '<?= $basePath ?>';</script>
 </head>
@@ -30,10 +51,11 @@ $hasRightPanel = $hasRightPanel ?? false;
 <!-- SIDEBAR -->
 <nav class="sidebar" id="mainSidebar">
   <!-- Sidebar Header -->
-  <div class="sidebar-header hide-on-mobile">
-    <!-- Desktop Logo -->
-    <div class="sidebar-logo" style="display:flex; justify-content:center; padding:16px; border-bottom:1px solid var(--border-light);">
-      <img src="<?= $basePath ?>/assets/img/logo-wide.png" alt="Lily Interiors" style="height:48px; object-fit:contain;">
+  <div class="sidebar-header">
+    <div class="sidebar-logo" style="display:flex; align-items:center; justify-content:center; padding:14px 16px; border-bottom:1px solid var(--border-light);">
+      <a href="<?= $basePath ?>/dashboard" style="display:flex; align-items:center; text-decoration:none;" title="Home">
+        <img src="<?= $basePath ?>/assets/img/logo-wide.png" alt="Lily Interiors" style="height:38px; object-fit:contain;">
+      </a>
     </div>
   </div>
 
@@ -42,12 +64,16 @@ $hasRightPanel = $hasRightPanel ?? false;
     <div class="sidebar-section-label">Main</div>
 
     <a href="<?= $basePath ?>/dashboard" class="sidebar-nav-item <?= ($activeNav==='dashboard') ? 'active':'' ?>">
-      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
-      Dashboard
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      Home
     </a>
     <a href="<?= $basePath ?>/projects" class="sidebar-nav-item <?= ($activeNav==='projects') ? 'active':'' ?>">
       <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>
       Projects
+    </a>
+    <a href="<?= $basePath ?>/estimates" class="sidebar-nav-item <?= in_array($activeNav, ['estimates', 'estimate-builder', 'estimate-view', 'estimate-catalog']) ? 'active':'' ?>">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+      Estimates
     </a>
 
     <div class="sidebar-section-label">Quick Entry</div>
@@ -98,8 +124,8 @@ $hasRightPanel = $hasRightPanel ?? false;
   </div>
 
   <!-- Sidebar Bottom Bar with Close Button -->
-  <div class="sidebar-bottom-bar hide-on-desktop" style="display:flex; justify-content:flex-end; align-items:center; padding:10px 16px; border-top:1px solid var(--border-light); background:transparent;">
-    <button type="button" onclick="closeSidebar()" class="sidebar-close-btn" title="Close Sidebar" style="width:36px; height:36px; border-radius:50%; background:var(--card-bg); border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-secondary); cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.08); transition:all 0.2s;">
+  <div class="sidebar-bottom-bar hide-on-desktop">
+    <button type="button" onclick="closeSidebar()" class="sidebar-close-btn" title="Close Sidebar">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -122,13 +148,13 @@ $hasRightPanel = $hasRightPanel ?? false;
     <svg id="menuIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
 
-  <!-- Mobile Logo -->
-  <div class="topbar-mobile-logo hide-on-desktop" style="display:flex; justify-content:center;">
+  <!-- Mobile Logo & Home Link -->
+  <a href="<?= $basePath ?>/dashboard" class="topbar-mobile-logo hide-on-desktop" style="display:flex; justify-content:center; align-items:center; text-decoration:none;" title="Home">
     <img src="<?= $basePath ?>/assets/img/logo-wide.png" alt="Lily Interiors" style="height:32px; object-fit:contain;">
-  </div>
+  </a>
 
   <!-- Greeting (Desktop) -->
-  <div class="topbar-greeting hide-on-mobile">
+  <div class="topbar-greeting hide-on-mobile hide-on-print">
     <h2 id="topbarTitle"><?= htmlspecialchars($pageTitle ?? 'Dashboard') ?></h2>
     <p id="topbarDate">Good evening, <?= htmlspecialchars($username) ?></p>
   </div>
@@ -166,20 +192,21 @@ $hasRightPanel = $hasRightPanel ?? false;
         <div class="user-name"><?= htmlspecialchars($username) ?></div>
         <div class="user-role"><?= ucfirst($role) ?></div>
       </div>
-      <div class="topbar-user-avatar">
-        <?= $userInitial ?>
-        <label for="avatar-upload" class="avatar-upload-overlay" title="Upload Picture">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-        </label>
-        <input type="file" id="avatar-upload" style="display:none;" accept="image/*">
+      <div class="topbar-user-avatar <?= !empty($userPhoto) ? 'has-photo' : '' ?>" id="topbarUserAvatar">
+        <?php if (!empty($userPhoto)): ?>
+          <img src="<?= htmlspecialchars($basePath . '/' . ltrim($userPhoto, '/')) ?>" alt="<?= htmlspecialchars($username) ?>" class="user-avatar-img" id="topbarAvatarImg">
+        <?php else: ?>
+          <span class="user-avatar-initial" id="topbarAvatarInitial"><?= $userInitial ?></span>
+        <?php endif; ?>
       </div>
+      <input type="file" id="avatar-upload" style="display:none;" accept="image/*">
     </div>
   </div>
 </header>
 
 <!-- Mobile Greeting Bar (Sub-pages only) -->
 <?php if (($activeNav ?? '') !== 'dashboard'): ?>
-<div class="mobile-greeting-bar hide-on-desktop">
+<div class="mobile-greeting-bar hide-on-desktop hide-on-print">
   <div>
     <h2 class="mobile-greeting-title"><?= htmlspecialchars($pageTitle ?? '') ?></h2>
     <p class="mobile-greeting-sub"><?= htmlspecialchars($username) ?></p>
@@ -192,6 +219,7 @@ $hasRightPanel = $hasRightPanel ?? false;
 <?php endif; ?>
 
 <!-- PAGE CONTENT START -->
-<main class="main-content has-right-panel" id="mainContent">
+<main class="main-content" id="mainContent">
 
 
+  

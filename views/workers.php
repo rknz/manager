@@ -18,12 +18,7 @@ include __DIR__ . '/../includes/header.php';
   </select>
   <button class="btn btn-primary btn-sm" onclick="openModal('addWorkerModal')">+ Add Worker</button>
 </div>
-<div class="table-wrapper card">
-  <table class="data-table">
-    <thead><tr><th>Name</th><th>Trade</th><th>Works Under (Contractor)</th><th>Phone</th><th>Daily Rate</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
-    <tbody id="workerBody"></tbody>
-  </table>
-</div>
+<div class="workers-grid" id="workerGrid"></div>
 
 <!-- ADD -->
 <div class="modal-overlay" id="addWorkerModal"><div class="modal" data-form-nav>
@@ -128,30 +123,77 @@ function fillTradeOpts(selId,val){
 }
 
 function filterWorkers(){
-  const q=(document.getElementById('wSearch').value||'').toLowerCase();
+  const q=(document.getElementById('wSearch').value||'').trim().toLowerCase();
   const contFilter = document.getElementById('wContFilter').value;
   const rows=allWorkers.filter(w=>{
-    const mq=!q||w.name.toLowerCase().includes(q)||(w.trade||'').toLowerCase().includes(q)||(w.contractor_name||'').toLowerCase().includes(q);
+    const mq=!q||(w.name||'').toLowerCase().includes(q)||(w.trade||'').toLowerCase().includes(q)||(w.contractor_name||'').toLowerCase().includes(q)||(w.phone||'').toLowerCase().includes(q)||(w.address||'').toLowerCase().includes(q);
     let mc = true;
     if (contFilter === 'none') mc = !w.contractor_id || w.contractor_id == 0;
     else if (contFilter) mc = w.contractor_id == contFilter;
     return mq && mc;
   });
-  const body=document.getElementById('workerBody');
-  if(!rows.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">No workers found</td></tr>';return;}
-  body.innerHTML=rows.map(w=>`<tr>
-    <td><strong>${esc(w.name)}</strong></td>
-    <td><span class="badge badge-info">${esc(w.trade||'-')}</span></td>
-    <td>${w.contractor_id?`<span style="color:var(--primary);font-weight:600;">&#128736; ${esc(w.contractor_name||'-')}</span>`:'<span class="badge badge-neutral">Independent</span>'}</td>
-    <td>${esc(w.phone||'-')}</td>
-    <td style="font-family:'Poppins','Noto Sans Bengali','Hind Siliguri','Nirmala UI','Vrinda','Shonar Bangla',sans-serif;font-weight:700;">Tk.${parseFloat(w.default_daily_rate||0).toLocaleString()}</td>
-    <td><span class="badge ${w.is_active?'badge-success':'badge-neutral'}">${w.is_active?'Active':'Inactive'}</span></td>
-    <td class="td-actions" style="text-align:right;">
-      <button class="btn btn-secondary btn-sm" onclick="openWorkerStatementModal(${w.id}, '${esc(w.name)}')" title="Print Worker Account Statement">&#128196; Statement</button>
-      <button class="btn btn-ghost btn-sm" onclick="openEdit(${w.id})" title="Edit">&#9998;</button>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="delWorker(${w.id})" title="Delete">&#10006;</button>
-    </td>
-  </tr>`).join('');
+  const grid=document.getElementById('workerGrid');
+  if(!grid) return;
+
+  if(!rows.length){
+    grid.innerHTML='<div class="card" style="grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--text-muted);border-radius:14px;border:1px solid var(--border);">No workers found</div>';
+    return;
+  }
+
+  grid.innerHTML=rows.map(w=>{
+    const initial = esc(w.name || 'W').charAt(0).toUpperCase();
+    return `
+    <div class="worker-card">
+      <div class="wc-header">
+        <div class="wc-avatar">${initial}</div>
+        <div class="wc-title-box">
+          <div class="wc-name">${esc(w.name)}</div>
+          <div class="wc-badge-row">
+            ${w.trade ? `<span class="badge badge-info wc-trade">${esc(w.trade)}</span>` : ''}
+            ${w.contractor_id ? `<span class="badge badge-warning wc-contractor" title="Works under contractor">&#128736; ${esc(w.contractor_name||'')}</span>` : `<span class="badge badge-neutral wc-contractor">Independent</span>`}
+          </div>
+        </div>
+        <span class="badge ${w.is_active ? 'badge-success' : 'badge-neutral'} wc-status">${w.is_active ? 'Active' : 'Inactive'}</span>
+      </div>
+
+      <div class="wc-details">
+        <div class="wc-detail-row">
+          <span class="wc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Daily Rate:
+          </span>
+          <span class="wc-val wc-rate">Tk. ${parseFloat(w.default_daily_rate||0).toLocaleString()} <span class="wc-rate-unit">/ day</span></span>
+        </div>
+
+        <div class="wc-detail-row">
+          <span class="wc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Phone:
+          </span>
+          ${w.phone ? `<a href="tel:${esc(w.phone)}" class="wc-val wc-phone">${esc(w.phone)}</a>` : `<span class="wc-val wc-empty">—</span>`}
+        </div>
+
+        ${w.address ? `
+        <div class="wc-detail-row">
+          <span class="wc-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Address:
+          </span>
+          <span class="wc-val">${esc(w.address)}</span>
+        </div>` : ''}
+      </div>
+
+      <div class="wc-actions">
+        ${w.phone ? `
+          <a href="tel:${esc(w.phone)}" class="btn btn-outline btn-sm wc-btn-call" title="Call Worker">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Call
+          </a>` : ''}
+        <button class="btn btn-outline btn-sm wc-btn-statement" onclick="openWorkerStatementModal(${w.id}, '${esc(w.name)}')" title="Print Worker Account Statement">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="margin-right:3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Statement
+        </button>
+        <button class="btn btn-secondary btn-sm wc-btn-edit" onclick="openEdit(${w.id})" title="Edit">&#9998; Edit</button>
+        <button class="btn btn-ghost btn-sm wc-btn-delete" onclick="delWorker(${w.id})" style="color:var(--danger);" title="Deactivate">&#10006;</button>
+      </div>
+    </div>
+    `;
+  }).join('');
 }
 
 function openWorkerStatementModal(id, name) {
@@ -218,12 +260,13 @@ async function updateWorker(){
 }
 
 async function delWorker(id){
-  confirmDelete('Deactivate this worker?',async function(){
+  confirmDelete('Deactivate this worker?',async function(adminPass){
     const fd=new FormData();
     fd.append('id',id);
-    await fetch(BASE_PATH + '/api/workers.php?action=delete',{method:'POST',body:fd});
-    showToast('Done','success');
-    loadWorkers();
+    if(adminPass) fd.append('admin_password',adminPass);
+    const r=await fetch(BASE_PATH + '/api/workers.php?action=delete',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.success){showToast('Done','success');loadWorkers();}else showToast(d.message||'Error','error');
   });
 }
 

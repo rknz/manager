@@ -15,7 +15,7 @@ try {
             $status = $_GET['status'] ?? 'all';
             $q      = $_GET['q']      ?? null;
             $sql    = "SELECT id, name, client_name, client_phone, client_email, client_address,
-                              project_type, status, estimated_budget, start_date, end_date, project_image, address
+                              project_type, status, estimated_budget, start_date, end_date, project_image, address, created_at
                        FROM app_projects WHERE is_deleted=0";
             $params = [];
             if ($status !== 'all') { $sql .= " AND status=?"; $params[] = ucfirst($status); }
@@ -25,7 +25,7 @@ try {
             $stmt->execute($params);
             $projects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Add progress calculation
+            // Add date-based timeline progress calculation
             foreach ($projects as &$p) {
                 $pid = $p['id'];
                 $sMat = $pdo->prepare("SELECT COALESCE(SUM(total),0) FROM app_supply_purchases WHERE project_id=? AND is_deleted=0");
@@ -38,9 +38,38 @@ try {
                 $sLab->execute([$pid]); $labSpent = (float)$sLab->fetchColumn();
 
                 $spent = $matSpent + $advSpent + $labSpent;
-                $budget = (float)($p['estimated_budget'] ?? 0);
-                $p['progress'] = $budget > 0 ? min(100, round(($spent / $budget) * 100)) : 0;
                 $p['spent'] = $spent;
+
+                // Timeline progress: start date to end date vs today
+                $statusLower = strtolower($p['status'] ?? '');
+                if ($statusLower === 'completed') {
+                    $p['progress'] = 100;
+                } else {
+                    $startDateStr = !empty($p['start_date']) ? $p['start_date'] : (!empty($p['created_at']) ? date('Y-m-d', strtotime($p['created_at'])) : null);
+                    $endDateStr   = !empty($p['end_date']) ? $p['end_date'] : null;
+
+                    if ($startDateStr && $endDateStr) {
+                        $startTs = strtotime($startDateStr);
+                        $endTs   = strtotime($endDateStr);
+                        $todayTs = strtotime(date('Y-m-d'));
+
+                        if ($endTs > $startTs) {
+                            if ($todayTs <= $startTs) {
+                                $p['progress'] = 0;
+                            } elseif ($todayTs >= $endTs) {
+                                $p['progress'] = 100;
+                            } else {
+                                $totalSecs   = $endTs - $startTs;
+                                $elapsedSecs = $todayTs - $startTs;
+                                $p['progress'] = max(0, min(100, (int)round(($elapsedSecs / $totalSecs) * 100)));
+                            }
+                        } else {
+                            $p['progress'] = ($todayTs >= $endTs) ? 100 : 0;
+                        }
+                    } else {
+                        $p['progress'] = 0;
+                    }
+                }
             }
             unset($p);
 
@@ -99,10 +128,20 @@ try {
             $project_type  = $_POST['project_type'] ?? 'Residential';
             $status        = $_POST['status'] ?? 'Ongoing';
             $budget        = floatval($_POST['estimated_budget'] ?? 0);
-            $start_date    = trim($_POST['start_date'] ?? '');
-            if ($start_date === '') $start_date = date('Y-m-d');
-            $end_date      = trim($_POST['end_date'] ?? '');
-            if ($end_date === '') $end_date = null;
+
+            // Fetch existing project record to safely preserve dates if omitted
+            $currStmt = $pdo->prepare("SELECT start_date, end_date FROM app_projects WHERE id=?");
+            $currStmt->execute([$id]);
+            $currProj = $currStmt->fetch();
+
+            $start_date = isset($_POST['start_date']) && trim($_POST['start_date']) !== ''
+                ? trim($_POST['start_date'])
+                : ($currProj['start_date'] ?? date('Y-m-d'));
+
+            $end_date = isset($_POST['end_date'])
+                ? (trim($_POST['end_date']) !== '' ? trim($_POST['end_date']) : null)
+                : ($currProj['end_date'] ?? null);
+
             $notes         = trim($_POST['notes'] ?? '');
             $project_image = trim($_POST['project_image'] ?? '') ?: null;
             if (!$id || empty($name)) { echo json_encode(['success'=>false,'message'=>'Invalid data.']); exit; }

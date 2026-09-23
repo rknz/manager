@@ -17,6 +17,7 @@ function getBasePath() {
     }
     return $base;
 }
+$basePath = $basePath ?? getBasePath();
 
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
@@ -58,16 +59,17 @@ function checkSessionTimeout() {
     global $pdo;
     if (isLoggedIn()) {
         $timeout = 7200;
-        try {
-            $stmt = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key = 'session_timeout'");
-            $val = $stmt->fetchColumn();
-            if ($val) $timeout = (int) $val;
-        } catch (Exception $e) {}
+        if (isset($pdo) && $pdo) {
+            try {
+                $stmt = $pdo->query("SELECT setting_value FROM app_settings WHERE setting_key = 'session_timeout'");
+                $val = $stmt->fetchColumn();
+                if ($val) $timeout = (int) $val;
+            } catch (Throwable $e) {}
+        }
         if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
             session_unset();
             session_destroy();
-            $base = dirname($_SERVER['SCRIPT_NAME']);
-            if ($base === '\\' || $base === '/') $base = '';
+            $base = getBasePath();
             header("Location: $base/login?expired=1");
             exit;
         }

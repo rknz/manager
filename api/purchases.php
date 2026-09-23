@@ -58,12 +58,25 @@ try {
             // purchased_by is now optional — default to logged-in user
             $purchased_by    = trim($_POST['purchased_by'] ?? $_SESSION['username'] ?? 'Admin');
 
+            $isBoard = (strtolower($supply_category) === 'board' || strtolower($supply_category) === 'board & wood' || stripos($supply_category, 'board') !== false);
+            if ($isBoard) {
+                if (empty($board_type) && !empty($item_name)) {
+                    $board_type = $item_name;
+                } elseif (empty($item_name) && !empty($board_type)) {
+                    $item_name = $board_type;
+                } else {
+                    $board_type = $item_name;
+                }
+                $board_size = null;
+                if (!empty($board_thickness) && is_numeric($board_thickness)) {
+                    $board_thickness .= 'mm';
+                }
+            } else {
+                $board_type = $board_thickness = $board_size = null;
+            }
+
             if (empty($item_name) || $quantity <= 0 || $rate <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Item name, quantity and rate are required.']); exit;
-            }
-            // Non-board categories: clear board fields
-            if (strtolower($supply_category) !== 'board' && strtolower($supply_category) !== 'board & wood') {
-                $board_type = $board_thickness = $board_size = null;
             }
             $total = round($quantity * $rate, 2);
             $stmt = $pdo->prepare("INSERT INTO app_supply_purchases
@@ -92,11 +105,26 @@ try {
             $purchase_date   = trim($_POST['purchase_date'] ?? date('Y-m-d'));
             $notes           = trim($_POST['notes'] ?? '') ?: null;
             $purchased_by    = trim($_POST['purchased_by'] ?? $_SESSION['username'] ?? 'Admin');
+
+            $isBoard = (strtolower($supply_category) === 'board' || strtolower($supply_category) === 'board & wood' || stripos($supply_category, 'board') !== false);
+            if ($isBoard) {
+                if (empty($board_type) && !empty($item_name)) {
+                    $board_type = $item_name;
+                } elseif (empty($item_name) && !empty($board_type)) {
+                    $item_name = $board_type;
+                } else {
+                    $board_type = $item_name;
+                }
+                $board_size = null;
+                if (!empty($board_thickness) && is_numeric($board_thickness)) {
+                    $board_thickness .= 'mm';
+                }
+            } else {
+                $board_type = $board_thickness = $board_size = null;
+            }
+
             if (!$id || empty($item_name) || $quantity <= 0 || $rate <= 0) {
                 echo json_encode(['success' => false, 'message' => 'Invalid data.']); exit;
-            }
-            if (strtolower($supply_category) !== 'board' && strtolower($supply_category) !== 'board & wood') {
-                $board_type = $board_thickness = $board_size = null;
             }
             $total = round($quantity * $rate, 2);
             $stmt = $pdo->prepare("UPDATE app_supply_purchases SET
@@ -125,8 +153,8 @@ try {
             echo json_encode(['success' => true, 'data' => array_column($stmt->fetchAll(), 'value')]);
             break;
 
-        case 'list_categories':
-            $cats = $pdo->query("SELECT id, name FROM app_categories ORDER BY name")->fetchAll();
+case 'list_categories':
+            $cats = $pdo->query("SELECT id, name, billing_type AS type, sort_order FROM app_categories ORDER BY name")->fetchAll();
             echo json_encode(['success' => true, 'data' => $cats]);
             break;
 

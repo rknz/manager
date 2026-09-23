@@ -11,7 +11,7 @@ try {
     switch ($action) {
         case 'list':
             $q = $_GET['q'] ?? null;
-            $sql = "SELECT * FROM app_contractors WHERE is_active=1";
+            $sql = "SELECT * FROM app_contractors WHERE 1=1";
             $params = [];
             if ($q) { $sql .= " AND (name LIKE ? OR phone LIKE ? OR trade LIKE ?)"; $params = ["%$q%","%$q%","%$q%"]; }
             $sql .= " ORDER BY name ASC";
