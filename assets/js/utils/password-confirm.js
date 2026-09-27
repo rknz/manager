@@ -100,8 +100,9 @@
       if (data.success) {
         attempts = 0;
         const cb = pendingCallback;
+        const enteredPassword = pwd;
         close();
-        if (cb) cb();
+        if (cb) cb(enteredPassword);
       } else {
         attempts++;
         if (attempts >= 3) {

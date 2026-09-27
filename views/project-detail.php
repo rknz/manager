@@ -1976,12 +1976,12 @@ async function loadPrintouts() {
   box.innerHTML=d.data.map(p=>`<div class="printout-item"><div class="printout-icon">&#128247;</div><div class="printout-body"><div class="printout-title">${esc(p.title)}</div><div class="printout-meta">${fmtDate(p.created_at)} &middot; ${Math.round(p.file_size/1024)}KB</div></div><div style="display:flex;gap:6px;"><a href="${BASE_PATH}/${esc(p.file_path)}" target="_blank" class="btn btn-outline btn-sm">View</a><button class="btn btn-ghost btn-sm btn-icon" onclick="delPrintout(${p.id})">&#10006;</button></div></div>`).join('');
 }
 async function delPrintout(id){
-    confirmDelete('Delete printout?',async function(pwd){
+    confirmDelete('Delete printout?',async function(){
         try {
             const r = await fetch(BASE_PATH + '/api/printouts.php?action=delete&project_id='+PID,{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({id, admin_password: pwd})
+                body:JSON.stringify({id})
             });
             const d = await r.json();
             if (d.success) {

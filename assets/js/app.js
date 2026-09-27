@@ -266,9 +266,7 @@
   };
 
   window.confirmDelete = function (msg, callback) {
-    if (typeof PasswordConfirm !== 'undefined') {
-      PasswordConfirm.require(msg || 'Delete this record', callback);
-    } else if (confirm(msg || 'Are you sure you want to delete?')) {
+    if (typeof callback === 'function') {
       callback();
     }
   };

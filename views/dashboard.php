@@ -188,7 +188,7 @@ $greetingText = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : '
       <div class="dash-section">
         <div class="dash-section-header">
           <h2 class="dash-section-title">Recent Transactions</h2>
-          <a href="<?= $basePath ?>/reports" class="dash-section-link">View All</a>
+          <button type="button" class="dash-section-link" onclick="openAllRecentActivity()" style="background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">View All &rarr;</button>
         </div>
         <div class="dash-txns-card">
           <div id="dashRecentTxnList">
@@ -272,6 +272,7 @@ $greetingText = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : '
           <span style="font-size:16px;">&#128260;</span>
           <h3 class="mob-card-title">Recent Activity</h3>
         </div>
+        <button type="button" class="mob-card-link" onclick="openAllRecentActivity()" style="background:none;border:none;cursor:pointer;font-family:inherit;padding:0;color:inherit;font-size:inherit;">View all &rarr;</button>
       </div>
       <div id="mobActivityList">
         <?php for($i=0;$i<4;$i++): ?>
@@ -353,6 +354,71 @@ $greetingText = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : '
   </div><!-- /dash-mobile-view -->
 
 </div><!-- /dashboard-page-container -->
+
+
+<!-- ALL RECENT ACTIVITY MODAL (Today & Past Days) -->
+<div class="modal-overlay" id="allActivityModal">
+  <div class="modal modal-lg" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:18px;">
+    <div class="modal-header" style="padding:16px 20px;border-bottom:1px solid var(--border-color,#E2E8F0);display:flex;align-items:center;justify-content:space-between;background:var(--bg-card,#fff);position:sticky;top:0;z-index:10;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#FEE2E2;color:#9C1F24;display:flex;align-items:center;justify-content:center;font-size:18px;">
+          &#128260;
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--text-primary,#0F172A);font-family:Poppins,sans-serif;">Recent Activity</h3>
+          <p style="margin:2px 0 0;font-size:11.5px;color:var(--text-muted,#64748B);">Activities and transactions from today and past days</p>
+        </div>
+      </div>
+      <div class="modal-close" onclick="closeModal('allActivityModal')" style="cursor:pointer;font-size:22px;color:#94A3B8;line-height:1;padding:4px 8px;">&times;</div>
+    </div>
+
+    <!-- Filter chips -->
+    <div style="padding:10px 20px;background:var(--bg-subtle,#F8FAFC);border-bottom:1px solid var(--border-color,#E2E8F0);display:flex;gap:8px;align-items:center;overflow-x:auto;">
+      <button type="button" class="activity-filter-chip active" onclick="filterActivityView('all', this)">All</button>
+      <button type="button" class="activity-filter-chip" onclick="filterActivityView('labor_payment', this)">Labor Payments</button>
+      <button type="button" class="activity-filter-chip" onclick="filterActivityView('contractor_payment', this)">Contractors</button>
+      <button type="button" class="activity-filter-chip" onclick="filterActivityView('purchase', this)">Purchases</button>
+      <button type="button" class="activity-filter-chip" onclick="filterActivityView('client_payment', this)">Client Payments</button>
+    </div>
+
+    <!-- Activity List Body -->
+    <div class="modal-body" id="allActivityBody" style="padding:16px 20px;overflow-y:auto;flex:1;min-height:280px;max-height:65vh;">
+      <div style="padding:40px 0;text-align:center;color:#94A3B8;">
+        <div class="spinner" style="width:26px;height:26px;margin:0 auto 10px;"></div>
+        Loading activities...
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding:12px 20px;border-top:1px solid var(--border-color,#E2E8F0);display:flex;justify-content:space-between;align-items:center;background:var(--bg-card,#fff);">
+      <span id="allActivityCount" style="font-size:12px;color:var(--text-muted,#64748B);"></span>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('allActivityModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.activity-filter-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid #E2E8F0;
+  background: #FFF;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748B;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.activity-filter-chip:hover {
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+.activity-filter-chip.active {
+  background: #9C1F24;
+  color: #FFF;
+  border-color: #9C1F24;
+}
+</style>
 
 <script>
 var TODAY = '<?= date('Y-m-d') ?>';
@@ -469,16 +535,18 @@ function populateDesktop(data) {
         const amtClass = cfg.isExpense ? 'red' : 'green';
         const titleText = t.title || (cfg.isExpense ? 'Payment' : 'Income');
         const projText = t.project_name || '';
+        const subLabel = t.type === 'labor_payment' ? 'Labor Payment' : (t.type === 'contractor_payment' ? 'Contractor Advance' : (t.type === 'purchase' ? 'Purchase' : ''));
+        const fullSub = projText ? (subLabel ? `${projText} &bull; ${subLabel}` : projText) : subLabel;
         return `
         <div class="dash-txn-item-clean">
           <div class="dash-txn-circle" style="background:${cfg.bg};color:${cfg.color};">${cfg.icon}</div>
           <div class="dash-txn-main">
             <div class="dash-txn-name" title="${esc(titleText)}">${esc(titleText)}</div>
-            <div class="dash-txn-proj" title="${esc(projText)}">${esc(projText)}</div>
+            <div class="dash-txn-proj" title="${esc(projText)}">${fullSub}</div>
           </div>
           <div class="dash-txn-side">
-            <div class="dash-txn-amount ${amtClass}">${fmtTk(t.amount)}</div>
-            <div class="dash-txn-time">${fmtDateClean(t.tx_date)}</div>
+            <div class="dash-txn-amt ${amtClass}">${(cfg.isExpense?'-Tk. ':'+Tk. ')+parseFloat(t.amount||0).toLocaleString('en-BD')}</div>
+            <div class="dash-txn-date">${fmtDateShort(t.tx_date)}</div>
           </div>
         </div>`;
       }).join('');
@@ -518,12 +586,16 @@ function populateMobile(data) {
       mobActList.innerHTML = txns.slice(0, 4).map(t => {
         const ti = typeIcons[t.type] || { bg:'#F1F5F9', icon:'&#9679;', isExp:true };
         const amtStr = (ti.isExp ? '-Tk. ' : '+Tk. ') + parseFloat(t.amount || 0).toLocaleString('en-BD', {maximumFractionDigits:0});
+        const titleText = t.title || (ti.isExp ? 'Payment' : 'Income');
+        const projText = t.project_name || '';
+        const subLabel = t.type === 'labor_payment' ? 'Labor Payment' : (t.type === 'contractor_payment' ? 'Contractor Advance' : (t.type === 'purchase' ? 'Purchase' : ''));
+        const fullSub = projText ? (subLabel ? `${esc(projText)} &bull; ${subLabel}` : esc(projText)) : subLabel;
         return `
         <div class="mob-activity-item">
           <div class="mob-activity-icon" style="background:${ti.bg};">${ti.icon}</div>
           <div class="mob-activity-details">
-            <div class="mob-activity-title">${esc(t.title || 'Transaction')}</div>
-            <div class="mob-activity-sub">${esc(t.project_name || '')}</div>
+            <div class="mob-activity-title">${esc(titleText)}</div>
+            <div class="mob-activity-sub">${fullSub}</div>
           </div>
           <div class="mob-activity-right">
             <div class="mob-activity-amount" style="color:${ti.isExp?'#EF4444':'#059669'};">${amtStr}</div>
@@ -682,6 +754,135 @@ function fmtDateShort(d) {
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return d;
   return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+
+// --- ALL RECENT ACTIVITY VIEW ---
+let cachedAllActivities = [];
+let activeActivityFilter = 'all';
+
+async function openAllRecentActivity() {
+  openModal('allActivityModal');
+  const body = document.getElementById('allActivityBody');
+  if (!cachedAllActivities.length) {
+    body.innerHTML = '<div style="padding:40px 0;text-align:center;color:#94A3B8;"><div class="spinner" style="width:26px;height:26px;margin:0 auto 10px;"></div>Loading recent activities...</div>';
+  }
+  try {
+    const res = await fetch(BASE_PATH + '/api/index.php?action=get_all_recent_activity');
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) {
+      cachedAllActivities = data.data;
+      renderAllActivities();
+    } else {
+      body.innerHTML = '<p style="padding:30px 0;text-align:center;color:#94A3B8;font-size:13px;">No recent activities found.</p>';
+    }
+  } catch(e) {
+    body.innerHTML = '<p style="padding:30px 0;text-align:center;color:#EF4444;font-size:13px;">Failed to load activities.</p>';
+  }
+}
+
+function filterActivityView(type, btn) {
+  activeActivityFilter = type;
+  document.querySelectorAll('.activity-filter-chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAllActivities();
+}
+
+function renderAllActivities() {
+  const body = document.getElementById('allActivityBody');
+  const countEl = document.getElementById('allActivityCount');
+  if (!body) return;
+
+  let list = cachedAllActivities;
+  if (activeActivityFilter !== 'all') {
+    list = list.filter(item => item.type === activeActivityFilter);
+  }
+
+  if (countEl) {
+    countEl.textContent = `${list.length} activit${list.length === 1 ? 'y' : 'ies'}`;
+  }
+
+  if (!list.length) {
+    body.innerHTML = '<p style="padding:36px 0;text-align:center;color:#94A3B8;font-size:13px;">No activities matching this filter.</p>';
+    return;
+  }
+
+  // Group by tx_date
+  const groups = {};
+  list.forEach(item => {
+    const d = item.tx_date ? item.tx_date.substring(0, 10) : 'Other';
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(item);
+  });
+
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const yest = new Date();
+  yest.setDate(yest.getDate() - 1);
+  const yestStr = yest.toISOString().substring(0, 10);
+
+  const typeConfig = {
+    purchase: { bg: '#D1FAE5', color: '#059669', icon: '&#128722;', label: 'Purchase', isExp: true },
+    contractor_payment: { bg: '#FEF3C7', color: '#D97706', icon: '&#128736;', label: 'Contractor Advance', isExp: true },
+    labor_payment: { bg: '#DBEAFE', color: '#2563EB', icon: '&#128170;', label: 'Labor Payment', isExp: true },
+    client_payment: { bg: '#D1FAE5', color: '#059669', icon: '&#128176;', label: 'Client Payment', isExp: false }
+  };
+
+  let html = '';
+  Object.keys(groups).forEach(dateStr => {
+    let headerText = dateStr;
+    if (dateStr === todayStr) {
+      headerText = 'Today (' + fmtDateShort(dateStr) + ')';
+    } else if (dateStr === yestStr) {
+      headerText = 'Yesterday (' + fmtDateShort(dateStr) + ')';
+    } else if (dateStr !== 'Other') {
+      const dt = new Date(dateStr + 'T00:00:00');
+      headerText = isNaN(dt) ? dateStr : dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    html += `
+    <div style="margin-bottom:18px;">
+      <div style="font-size:11.5px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;padding-bottom:6px;border-bottom:1px solid #F1F5F9;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+        <span>&#128197;</span> ${esc(headerText)}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+    `;
+
+    groups[dateStr].forEach(t => {
+      const cfg = typeConfig[t.type] || { bg: '#F1F5F9', color: '#64748B', icon: '&#9679;', label: 'Transaction', isExp: true };
+      const amtStr = (cfg.isExp ? '-Tk. ' : '+Tk. ') + parseFloat(t.amount || 0).toLocaleString('en-BD', { maximumFractionDigits: 0 });
+      const displayTitle = t.title || (t.type === 'labor_payment' ? 'Labor Payment' : cfg.label);
+
+      html += `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FFF;border:1px solid #F1F5F9;border-radius:12px;transition:background .15s;">
+          <div style="width:38px;height:38px;border-radius:10px;background:${cfg.bg};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+            ${cfg.icon}
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13.5px;font-weight:600;color:#0F172A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              ${esc(displayTitle)}
+            </div>
+            <div style="font-size:11.5px;color:#64748B;display:flex;align-items:center;gap:6px;margin-top:2px;">
+              <span style="font-weight:500;color:#475569;">${esc(t.project_name || 'General')}</span>
+              <span>&bull;</span>
+              <span style="background:${cfg.bg};color:${cfg.color};padding:1px 6px;border-radius:4px;font-size:10.5px;font-weight:600;">${cfg.label}</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:13.5px;font-weight:700;color:${cfg.isExp ? '#EF4444' : '#059669'};">
+              ${amtStr}
+            </div>
+            <div style="font-size:10.5px;color:#94A3B8;margin-top:2px;">
+              ${fmtDateShort(t.tx_date)}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+  });
+
+  body.innerHTML = html;
 }
 
 function initDashboard() {

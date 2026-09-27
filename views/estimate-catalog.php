@@ -154,6 +154,235 @@ include __DIR__ . '/../includes/header.php';
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* Catalog Mobile Cards Feed */
+.catalog-desktop-table {
+  display: block;
+}
+.catalog-mobile-cards-feed {
+  display: none;
+}
+.catalog-mobile-category-strip {
+  display: none;
+}
+.catalog-mobile-fab {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .catalog-container {
+    margin-bottom: calc(var(--bottom-nav-height, 64px) + 30px) !important;
+  }
+  .catalog-header-bar {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    gap: 10px !important;
+  }
+  .catalog-header-bar > div:first-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .catalog-header-bar h2 {
+    font-size: 15px !important;
+  }
+  .catalog-header-bar span {
+    display: none;
+  }
+  .catalog-header-bar > div:last-child {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px !important;
+  }
+  .catalog-header-bar > div:last-child > div:first-child {
+    display: none !important; /* category select hidden on mobile, replaced by pill strip */
+  }
+  .catalog-header-bar .btn {
+    font-size: 11.5px !important;
+    padding: 6px 10px !important;
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Mobile Category Pills Strip */
+  .catalog-mobile-category-strip {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px 10px 2px;
+    margin-bottom: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .catalog-mobile-category-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .cat-strip-pill {
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    flex-shrink: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .cat-strip-pill.active {
+    background: #9C1F24 !important;
+    color: #ffffff !important;
+    border-color: #9C1F24 !important;
+  }
+
+  .items-main-card {
+    border-radius: 16px !important;
+  }
+  .items-card-head {
+    padding: 12px 14px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .items-card-head > div:last-child {
+    min-width: 100% !important;
+  }
+  #catalogSearch {
+    width: 100% !important;
+    box-sizing: border-box;
+    border-radius: 10px !important;
+  }
+
+  /* Desktop Table Hidden on Mobile */
+  .catalog-desktop-table {
+    display: none !important;
+  }
+
+  /* Mobile Cards Feed Displayed */
+  .catalog-mobile-cards-feed {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  .catalog-mobile-item-card {
+    background: #ffffff;
+    border: 1px solid #F1F5F9;
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .cat-mob-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .cat-mob-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #F1F5F9;
+    color: #475569;
+  }
+  .cat-mob-rate {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #9C1F24;
+  }
+  .cat-mob-unit {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #64748B;
+  }
+  .cat-mob-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.3;
+  }
+  .cat-mob-specs {
+    font-size: 12px;
+    color: #64748B;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cat-mob-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #F8FAFC;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .cat-mob-unit-badge {
+    font-size: 11.5px;
+    color: #64748B;
+  }
+  .cat-mob-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .cat-mob-btn-edit {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #0F172A;
+    cursor: pointer;
+  }
+  .cat-mob-btn-delete {
+    background: #FFF1F2;
+    border: 1px solid #FECDD3;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #E11D48;
+    cursor: pointer;
+  }
+
+  /* Mobile FAB */
+  .catalog-mobile-fab {
+    display: flex !important;
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height, 64px) + 16px) !important;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #B5182E, #9C1F24);
+    color: #ffffff;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 300;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(181,24,46,0.35);
+    z-index: 999;
+    transition: transform 0.15s;
+  }
+  .catalog-mobile-fab:active {
+    transform: scale(0.92);
+  }
+}
 </style>
 
 <div class="catalog-container">
@@ -193,6 +422,11 @@ include __DIR__ . '/../includes/header.php';
     </div>
   </div>
 
+  <!-- Mobile Category Filter Strip (Horizontal scroll pills) -->
+  <div class="catalog-mobile-category-strip" id="catalogMobileCategoryStrip">
+    <!-- Populated by JS -->
+  </div>
+
   <!-- Full Width Items Main Table Card -->
   <div class="catalog-layout">
     <div class="items-main-card" style="width:100%;">
@@ -216,6 +450,9 @@ include __DIR__ . '/../includes/header.php';
       </div>
     </div>
   </div>
+
+  <!-- Mobile Floating Action Button (FAB) -->
+  <button type="button" class="catalog-mobile-fab" id="catalogMobileFab" onclick="openAddItemModal()" title="Add New Item">+</button>
 </div>
 
 <!-- ============================================================ -->
@@ -357,7 +594,8 @@ async function loadItems() {
 // -------------------------------------------------------------
 function renderCategoryDropdown() {
   var sel = document.getElementById('catalogCategorySelect');
-  if (!sel) return;
+  var mobStrip = document.getElementById('catalogMobileCategoryStrip');
+  if (!sel && !mobStrip) return;
 
   var counts = {};
   allItems.forEach(function(it) {
@@ -368,15 +606,25 @@ function renderCategoryDropdown() {
   // Unique list of all categories from DB + any in items
   var uniqueCats = Array.from(new Set(availableCategories.concat(Object.keys(counts)))).filter(Boolean).sort();
 
-  var html = '<option value="All" ' + (currentCategory === 'All' ? 'selected' : '') + '>All Categories (' + allItems.length + ' items)</option>';
+  if (sel) {
+    var html = '<option value="All" ' + (currentCategory === 'All' ? 'selected' : '') + '>All Categories (' + allItems.length + ' items)</option>';
+    uniqueCats.forEach(function(cat) {
+      var count = counts[cat] || 0;
+      var isSel = (currentCategory.toLowerCase() === cat.toLowerCase()) ? 'selected' : '';
+      html += '<option value="' + escAttr(cat) + '" ' + isSel + '>' + esc(cat) + ' (' + count + ')</option>';
+    });
+    sel.innerHTML = html;
+  }
 
-  uniqueCats.forEach(function(cat) {
-    var count = counts[cat] || 0;
-    var isSel = (currentCategory.toLowerCase() === cat.toLowerCase()) ? 'selected' : '';
-    html += '<option value="' + escAttr(cat) + '" ' + isSel + '>' + esc(cat) + ' (' + count + ')</option>';
-  });
-
-  sel.innerHTML = html;
+  if (mobStrip) {
+    var stripHtml = '<button type="button" class="cat-strip-pill ' + (currentCategory === 'All' ? 'active' : '') + '" onclick="selectCategory(\'All\')">All (' + allItems.length + ')</button>';
+    uniqueCats.forEach(function(cat) {
+      var count = counts[cat] || 0;
+      var isSel = (currentCategory.toLowerCase() === cat.toLowerCase()) ? 'active' : '';
+      stripHtml += '<button type="button" class="cat-strip-pill ' + isSel + '" onclick="selectCategory(\'' + escAttr(cat) + '\')">' + esc(cat) + ' (' + count + ')</button>';
+    });
+    mobStrip.innerHTML = stripHtml;
+  }
 }
 
 function onCategorySelectChange(cat) {
@@ -438,7 +686,7 @@ function renderItemsTable() {
   }
 
   var html = 
-    '<div class="table-responsive">' +
+    '<div class="table-responsive catalog-desktop-table">' +
       '<table class="table-catalog">' +
         '<thead>' +
           '<tr>' +
@@ -487,6 +735,30 @@ function renderItemsTable() {
   });
 
   html += '</tbody></table></div>';
+
+  /* Mobile Cards Feed for Mobile screens <= 768px */
+  html += '<div class="catalog-mobile-cards-feed">';
+  filtered.forEach(function(it) {
+    var rateNum = Number(it.default_rate || 0);
+    html += 
+      '<div class="catalog-mobile-item-card">' +
+        '<div class="cat-mob-top">' +
+          '<span class="cat-mob-pill">' + esc(it.category) + '</span>' +
+          '<div class="cat-mob-rate">৳ ' + Math.round(rateNum).toLocaleString('en-IN') + ' <span class="cat-mob-unit">/ ' + esc(it.unit) + '</span></div>' +
+        '</div>' +
+        '<div class="cat-mob-name">' + esc(it.item_name) + '</div>' +
+        (it.specifications ? '<div class="cat-mob-specs">' + esc(it.specifications) + '</div>' : '') +
+        '<div class="cat-mob-footer">' +
+          '<span class="cat-mob-unit-badge">Unit: <strong>' + esc(it.unit) + '</strong></span>' +
+          '<div class="cat-mob-actions">' +
+            '<button type="button" class="cat-mob-btn-edit" onclick="openEditItemModal(' + it.id + ')" title="Edit Item">✏️ Edit</button>' +
+            '<button type="button" class="cat-mob-btn-delete" onclick="deleteCatalogItemRow(' + it.id + ', \'' + escAttr(it.item_name) + '\')" title="Delete Item">🗑️ Delete</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+
   wrap.innerHTML = html;
 }
 
@@ -737,12 +1009,26 @@ function escAttr(str) {
     .replace(/"/g, '&quot;');
 }
 
+function ensureMobileCatalogFabFixed() {
+  if (window.innerWidth <= 768) {
+    var fab = document.getElementById('catalogMobileFab');
+    if (fab && fab.parentElement !== document.body) {
+      document.body.appendChild(fab);
+    }
+  }
+}
+
 // Ensure initCatalog runs whether page loaded directly or via PJAX
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initCatalog);
+  document.addEventListener('DOMContentLoaded', function() {
+    ensureMobileCatalogFabFixed();
+    initCatalog();
+  });
 } else {
+  ensureMobileCatalogFabFixed();
   initCatalog();
 }
+window.addEventListener('resize', ensureMobileCatalogFabFixed);
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

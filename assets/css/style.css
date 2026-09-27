@@ -2738,7 +2738,7 @@ textarea {
     align-items: center !important;
     justify-content: center !important;
     color: #64748B !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
     cursor: pointer !important;
     margin: 0 auto !important;
   }
@@ -2771,6 +2771,7 @@ textarea {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    transform: none !important;
   }
 
   .app-footer {
@@ -3460,7 +3461,7 @@ textarea {
   color: var(--text-primary);
   flex-shrink: 0;
   width: 260px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
 }
 
 .projects-grid .project-card {
@@ -3468,7 +3469,7 @@ textarea {
 }
 
 .project-card:hover {
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
   border-color: #CBD5E1;
 }
@@ -4090,7 +4091,12 @@ textarea {
 
 /* Animations */
 .animate-fade-in {
-  animation: fadeIn .4s ease both;
+  animation: fadeIn .3s ease both;
+}
+
+.main-content,
+.main-content.animate-fade-in {
+  transform: none !important;
 }
 
 .stagger-1 {
@@ -4116,12 +4122,10 @@ textarea {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px)
   }
 
   to {
     opacity: 1;
-    transform: translateY(0)
   }
 }
 
@@ -4203,6 +4207,7 @@ textarea {
 }
 
 @media (max-width: 1100px) {
+
   .contractors-grid,
   .workers-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -4211,6 +4216,7 @@ textarea {
 }
 
 @media (max-width: 680px) {
+
   .contractors-grid,
   .workers-grid {
     grid-template-columns: 1fr;
@@ -4224,7 +4230,7 @@ textarea {
   border: 1px solid var(--border, #E2E8F0);
   border-radius: 14px;
   padding: 16px 18px;
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -4740,6 +4746,7 @@ textarea {
     gap: 20px;
     width: 100%;
   }
+
   .dash-mobile-view {
     display: none !important;
   }
@@ -4749,6 +4756,7 @@ textarea {
   .dash-desktop-view {
     display: none !important;
   }
+
   .dash-mobile-view {
     display: flex;
     flex-direction: column;
@@ -4796,7 +4804,7 @@ textarea {
   font-size: 12px;
   font-weight: 600;
   color: #334155;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 /* 3x2 STATS GRID */
@@ -4817,7 +4825,7 @@ textarea {
   text-align: center;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: transform 0.15s ease;
 }
 
@@ -4860,7 +4868,7 @@ textarea {
   border: 1px solid #EDF2F7;
   border-radius: 18px;
   padding: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
 }
 
 .mob-card-header {
@@ -4986,7 +4994,7 @@ textarea {
   color: inherit;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .mob-project-img-wrap {
@@ -5383,6 +5391,7 @@ textarea {
     gap: 12px;
     padding-bottom: 8px;
   }
+
   .dash-recent-project-card {
     min-width: 240px;
     scroll-snap-align: start;
@@ -5790,6 +5799,7 @@ textarea {
     max-width: 480px !important;
     margin: 0 auto !important;
   }
+
   .fb-projects-grid {
     grid-template-columns: 1fr;
     gap: 14px;
@@ -6273,7 +6283,7 @@ textarea {
 
   .project-hero-img,
   .project-hero-placeholder {
-    height: 230px !important;
+    height: 290px !important;
     width: 100% !important;
     object-fit: cover !important;
   }
@@ -7520,6 +7530,7 @@ textarea {
 }
 
 @media (max-width: 580px) {
+
   .qp-grid-2,
   .qp-grid-3 {
     grid-template-columns: 1fr;

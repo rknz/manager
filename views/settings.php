@@ -4,6 +4,7 @@ requireLogin();
 $pageTitle='Settings';$activeNav='settings';
 $settings_rows=$pdo->query("SELECT setting_key,setting_value FROM app_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
 $users=$pdo->query("SELECT id,username,role,photo,is_active,created_at FROM app_users WHERE is_deleted=0 ORDER BY id")->fetchAll();
+$isOwner = in_array(strtolower($_SESSION['role'] ?? ''), ['owner', 'admin']);
 include __DIR__ . '/../includes/header.php';
 ?>
 <div class="tabs">
@@ -30,7 +31,9 @@ include __DIR__ . '/../includes/header.php';
 
 <!-- USERS -->
 <div id="tabUsers" class="tab-content" style="display:none;">
+  <?php if ($isOwner): ?>
   <div class="filter-bar"><button class="btn btn-primary btn-sm" onclick="openModal('addUserModal')">+ Add User</button></div>
+  <?php endif; ?>
   <div class="table-wrapper card">
     <table class="data-table">
       <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Created</th><th style="text-align:right;">Actions</th></tr></thead>
@@ -59,11 +62,13 @@ include __DIR__ . '/../includes/header.php';
           <td><?=date('d M Y',strtotime($u['created_at']))?></td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:6px;align-items:center;">
-              <?php if($u['id']!=$_SESSION['user_id']): ?>
+              <?php if($u['id'] == $_SESSION['user_id']): ?>
+                <span class="text-muted" style="font-size:12px;">(Current User)</span>
+              <?php elseif($isOwner): ?>
                 <button class="btn btn-ghost btn-sm" onclick="toggleUser(<?=$u['id']?>,<?=$u['is_active']?>)"><?=$u['is_active']?'Deactivate':'Activate'?></button>
                 <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger,#dc2626);" onclick="delUser(<?=$u['id']?>,'<?=htmlspecialchars(addslashes($u['username']))?>')" title="Delete User">&#128465;</button>
               <?php else: ?>
-                <span class="text-muted" style="font-size:12px;">(Current User)</span>
+                <span class="text-muted" style="font-size:12px;">Restricted</span>
               <?php endif; ?>
             </div>
           </td>
@@ -106,6 +111,11 @@ include __DIR__ . '/../includes/header.php';
     <div class="form-group"><label class="form-label">Password <span class="required">*</span></label><input type="password" id="nuPass" class="form-input"></div>
     <div class="form-group"><label class="form-label">Role</label><select id="nuRole" class="form-select"><option value="manager">Manager</option><option value="owner">Owner</option></select></div>
     <div class="form-group"><label class="form-label">User Photo</label><input type="file" id="nuPhoto" class="form-input" accept="image/*"></div>
+    <div class="form-group" style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border-color,#e2e8f0);">
+      <label class="form-label" style="color:#9C1F24;font-weight:600;">&#128274; Owner Confirmation Password <span class="required">*</span></label>
+      <input type="password" id="nuOwnerPass" class="form-input" placeholder="Enter your Owner password to confirm">
+      <span style="font-size:11px;color:#64748B;margin-top:3px;display:block;">Only Owners can create users. Confirm with your login password.</span>
+    </div>
   </div>
   <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('addUserModal')">Cancel</button><button class="btn btn-primary" data-save-btn onclick="addUser()">Create User</button></div>
 </div></div>
@@ -131,20 +141,26 @@ async function saveSettings(){
 }
 async function addUser(){
   const name=document.getElementById('nuName').value.trim(),pass=document.getElementById('nuPass').value;
+  const ownerPass=document.getElementById('nuOwnerPass').value;
   if(!name||!pass){showToast('Username and password required','warning');return;}
-  const fd=new FormData();fd.append('username',name);fd.append('password',pass);fd.append('role',document.getElementById('nuRole').value);
+  if(!ownerPass){showToast('Owner confirmation password required','warning');document.getElementById('nuOwnerPass').focus();return;}
+  const fd=new FormData();
+  fd.append('username',name);
+  fd.append('password',pass);
+  fd.append('role',document.getElementById('nuRole').value);
+  fd.append('owner_password',ownerPass);
   const photoFile=document.getElementById('nuPhoto').files[0];
   if(photoFile) fd.append('photo', photoFile);
   const r=await fetch(BASE_PATH + '/api/index.php?action=create_user',{method:'POST',body:fd});const d=await r.json();
   if(d.success){showToast('User created!','success');closeModal('addUserModal');location.reload();}else showToast(d.message||'Error','error');
 }
 function delUser(id, username){
-  PasswordConfirm.require(`Delete user "${username}"?`, async function(){
+  PasswordConfirm.require(`Delete user "${username}"? You must confirm with your Owner password.`, async function(ownerPass){
     try {
       const r = await fetch(BASE_PATH + '/api/index.php?action=delete_user', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id: id})
+        body: JSON.stringify({id: id, owner_password: ownerPass})
       });
       const d = await r.json();
       if(d.success){

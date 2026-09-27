@@ -45,7 +45,6 @@ try {
             break;
 
         case 'delete':
-            if (!verifyAdminAction()) { echo json_encode(['success'=>false,'message'=>'Unauthorized - Admin password required']); exit; }
             $data = json_decode(file_get_contents('php://input'), true) ?? [];
             $id   = intval($data['id'] ?? $_POST['id'] ?? 0);
             $project_id = intval($_GET['project_id'] ?? 0);

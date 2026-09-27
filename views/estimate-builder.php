@@ -835,6 +835,631 @@ include __DIR__ . '/../includes/header.php';
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* Action Dropdown Menu */
+.action-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+.btn-dots {
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  color: #64748B;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.btn-dots:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+.action-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: #ffffff;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  min-width: 170px;
+  z-index: 1000;
+  display: none;
+  padding: 6px 0;
+  margin-top: 4px;
+}
+.action-dropdown.show {
+  display: block;
+}
+.action-dropdown button,
+.action-dropdown a {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.action-dropdown button:hover,
+.action-dropdown a:hover {
+  background: #F8FAFC;
+  color: #0F172A;
+}
+
+/* Card 3: Add Section by Direct Category Dropdown */
+.add-section-dropdown-card {
+  background: #ffffff;
+  border: 1.5px dashed #EF4444;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-top: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.04);
+}
+.btn-sparkle-new-cat {
+  background: none;
+  border: none;
+  color: #0284C7;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+.btn-sparkle-new-cat:hover {
+  color: #B5182E;
+}
+.btn-add-section-pill {
+  background: #B5182E;
+  color: #ffffff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  box-shadow: 0 2px 6px rgba(181, 24, 46, 0.25);
+}
+.btn-add-section-pill:hover {
+  background: #9C1F24;
+}
+.sec-mobile-menu {
+  display: none;
+}
+.builder-top-dots {
+  display: none;
+}
+.builder-mobile-catalog-bar-link {
+  display: none;
+}
+.builder-mobile-sticky-bottom {
+  display: none;
+}
+
+/* Card 5 Signatories styles (Desktop Default) */
+.signatories-card-wrap {
+  background: #ffffff;
+  border: 1px solid #E2E8F0;
+  border-left: 4px solid #B5182E;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  box-sizing: border-box;
+  width: 100%;
+}
+.signatories-card-header {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.signatories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.signatory-field-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.signatory-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+  display: block;
+}
+.signatory-input {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: #0F172A;
+  background: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.signatory-input:focus {
+  border-color: #B5182E;
+  box-shadow: 0 0 0 2px rgba(181,24,46,0.1);
+}
+
+/* Mobile Optimizations - Matching Reference Image 2 */
+@media (max-width: 768px) {
+  .builder-wrap {
+    padding-bottom: calc(var(--bottom-nav-height, 64px) + 75px) !important;
+  }
+  .builder-top-bar {
+    background: #0B192C !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .builder-mobile-catalog-bar-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #ffffff;
+    border: 1.5px solid #FECDD3;
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(181, 24, 46, 0.04);
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+  }
+  .builder-mobile-catalog-bar-link:active {
+    background: #FFF1F2;
+    transform: scale(0.99);
+  }
+  .builder-mob-cat-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .builder-mob-cat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .builder-mob-cat-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.2;
+  }
+  .builder-mob-cat-sub {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .builder-mob-cat-action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #B5182E;
+    flex-shrink: 0;
+    background: #FFF1F2;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #FECDD3;
+  }
+  .builder-back-btn {
+    color: #ffffff !important;
+    padding: 4px 6px !important;
+  }
+  .builder-back-btn .back-text {
+    display: none !important;
+  }
+  .builder-doc-icon {
+    display: none !important;
+  }
+  .builder-title-text h2 {
+    color: #ffffff !important;
+    font-size: 14px !important;
+  }
+  .builder-title-text span {
+    color: #94A3B8 !important;
+    font-size: 11px !important;
+  }
+  .builder-catalog-link {
+    display: none !important;
+  }
+  .save-status-badge {
+    display: none !important;
+  }
+  .btn-save-draft {
+    background: transparent !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+  .btn-view-proposal {
+    display: none !important;
+  }
+  .builder-top-dots {
+    display: inline-block !important;
+  }
+  .builder-top-dots .btn-dots {
+    color: #ffffff !important;
+    font-size: 18px !important;
+    padding: 4px 6px !important;
+  }
+
+  /* Metadata Card on Mobile (Card 1) */
+  .metadata-grid {
+    background: #ffffff !important;
+    border: 1.5px solid #FECDD3 !important;
+    border-radius: 16px !important;
+    padding: 14px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 2px 8px rgba(181, 24, 46, 0.04) !important;
+  }
+  .meta-card {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+  .meta-card:nth-child(1),
+  .meta-card:nth-child(2) {
+    grid-column: span 1 !important;
+  }
+  .meta-card:nth-child(3),
+  .meta-card:nth-child(4) {
+    grid-column: span 2 !important;
+  }
+  .meta-icon-circle {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 8px !important;
+    margin-top: 2px !important;
+  }
+  .meta-icon-circle svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .meta-field-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .meta-label {
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+  }
+  .meta-input {
+    font-size: 12px !important;
+    padding: 7px 10px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Docked Summary Banner hidden on mobile; sticky button used instead */
+  .builder-summary-banner {
+    display: none !important;
+  }
+
+  /* Section Card (Card 2) on Mobile */
+  .builder-section-card {
+    border: 1.5px solid #FECDD3 !important;
+    border-radius: 16px !important;
+    margin-bottom: 16px !important;
+    overflow: hidden !important;
+  }
+  .section-card-header {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .sec-letter-badge {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 13.5px !important;
+    border-radius: 7px !important;
+  }
+  .sec-title-labels {
+    font-size: 11px !important;
+  }
+  .sec-main-lbl {
+    font-size: 11.5px !important;
+  }
+  .sec-sub-lbl {
+    display: none !important;
+  }
+  .sec-cat-select {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+  }
+  .sec-new-cat-btn {
+    background: #B5182E !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    border-radius: 16px !important;
+  }
+  .sec-active-indicator {
+    display: none !important;
+  }
+  .sec-subtotal-text {
+    font-size: 11.5px !important;
+  }
+  .sec-subtotal-text strong {
+    font-size: 13px !important;
+  }
+  .sec-delete-btn,
+  .sec-reorder-group {
+    display: none !important;
+  }
+  .sec-mobile-menu {
+    display: inline-block !important;
+    margin-left: auto;
+  }
+
+  /* Section Items Table */
+  .sec-items-scroll-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sec-table {
+    min-width: 540px !important;
+  }
+
+  /* Fast Inline Entry (Dashed Box in Card 2) */
+  .sec-fast-entry-wrap {
+    border: 1.5px dashed #EF4444 !important;
+    border-radius: 14px !important;
+    background: #FFFDFD !important;
+    padding: 12px 14px !important;
+    margin: 12px 14px !important;
+  }
+  .sec-fast-entry-wrap table {
+    display: block !important;
+    width: 100% !important;
+  }
+  .sec-fast-entry-wrap colgroup {
+    display: none !important;
+  }
+  .sec-fast-entry-wrap tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(1) {
+    /* + icon */
+    width: 18px !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    color: #B5182E !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(2) {
+    /* Item Input */
+    flex: 1 1 180px !important;
+    min-width: 140px !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(3) {
+    /* Unit select */
+    width: 65px !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(4) {
+    /* Qty input */
+    width: 50px !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(5) {
+    /* Rate input */
+    width: 70px !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(6) {
+    /* Live subtotal */
+    flex: 1 1 auto !important;
+    text-align: right !important;
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    padding-top: 4px !important;
+  }
+  .sec-fast-entry-wrap .inline-entry-row td:nth-child(7) {
+    /* + Add button */
+    flex: 0 0 auto !important;
+    padding-top: 4px !important;
+  }
+
+  /* Card 3: Direct Category Dropdown Box */
+  .add-section-dropdown-card {
+    border: 1.5px dashed #EF4444 !important;
+    border-radius: 16px !important;
+    padding: 14px 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* Card 4: Quick Category Chips Panel */
+  .add-section-panel {
+    border: 1.5px solid #FECDD3 !important;
+    border-radius: 16px !important;
+    padding: 14px 16px !important;
+    margin-bottom: 16px !important;
+  }
+  .quick-category-buttons-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+  .btn-category-add-chip {
+    padding: 8px 10px !important;
+    font-size: 11.5px !important;
+  }
+  .quick-custom-section-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .quick-custom-section-row input {
+    max-width: 100% !important;
+  }
+
+  /* Card 5: Signatories & Authority Card on Mobile */
+  .signatories-card-wrap {
+    display: block !important;
+    background: #ffffff !important;
+    border: 1.5px solid #FECDD3 !important;
+    border-left: 1.5px solid #FECDD3 !important;
+    border-radius: 16px !important;
+    padding: 16px 14px !important;
+    margin-bottom: 24px !important;
+    box-shadow: 0 2px 8px rgba(181, 24, 46, 0.04) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .signatories-card-header {
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    margin-bottom: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px dashed #FECDD3 !important;
+  }
+  .signatories-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .signatory-field-box {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .signatory-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .signatory-input {
+    width: 100% !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    padding: 8px 10px !important;
+    font-size: 12.5px !important;
+    color: #0F172A !important;
+    background: #ffffff !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+  }
+  .signatory-input:focus {
+    border-color: #B5182E !important;
+    box-shadow: 0 0 0 2px rgba(181, 24, 46, 0.1) !important;
+  }
+
+  /* Sticky Bottom Save Button Bar (Fixed right above mobile bottom-nav) */
+  .builder-mobile-sticky-bottom {
+    display: flex !important;
+    position: fixed;
+    bottom: var(--bottom-nav-height, 64px) !important;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 10px 16px;
+    border-top: 1px solid #E2E8F0;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+    z-index: 995;
+    box-sizing: border-box;
+  }
+  .btn-mobile-save-estimate {
+    width: 100%;
+    background: #9C1F24;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 20px;
+    font-size: 14.5px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(156, 31, 36, 0.35);
+  }
+}
+
+@media (max-width: 480px) {
+  .signatories-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
 </style>
 
 <div class="builder-wrap">
@@ -843,7 +1468,7 @@ include __DIR__ . '/../includes/header.php';
     <div class="builder-title-group">
       <a href="<?= $basePath ?>/estimates" class="builder-back-btn" data-no-pjax>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        All Estimates
+        <span class="back-text">All Estimates</span>
       </a>
 
       <div class="builder-doc-icon">
@@ -880,15 +1505,50 @@ include __DIR__ . '/../includes/header.php';
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         View &amp; Print Proposal
       </button>
+
+      <!-- 3-dots dropdown menu for mobile extra actions -->
+      <div class="action-menu-wrap builder-top-dots">
+        <button type="button" class="btn-dots" onclick="toggleActionMenu(event, 'top_bar_menu')">⋮</button>
+        <div class="action-dropdown" id="actionMenu_top_bar_menu">
+          <a href="<?= $basePath ?>/estimate-catalog" target="_blank">
+            📚 Item Library (ক্যাটালগ)
+          </a>
+          <button type="button" onclick="saveAndGoView()">
+            👁️ View &amp; Print Proposal
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 2. Metadata 4-Card Grid -->
+  <!-- Mobile Catalog Shortcut Banner (Visible on mobile <= 768px) -->
+  <a href="<?= $basePath ?>/estimate-catalog" target="_blank" class="builder-mobile-catalog-bar-link">
+    <div class="builder-mob-cat-left">
+      <div class="builder-mob-cat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#3B82F6"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5" fill="#10B981"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5" fill="#F59E0B"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5" fill="#EF4444"/>
+        </svg>
+      </div>
+      <div>
+        <div class="builder-mob-cat-title">Item Library &amp; Rates (ক্যাটালগ)</div>
+        <div class="builder-mob-cat-sub">আইটেম ও রেট শিট দেখুন বা নতুন আইটেম যোগ করুন</div>
+      </div>
+    </div>
+    <div class="builder-mob-cat-action">
+      <span>ওপেন</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </a>
+
+  <!-- 2. Metadata 4-Card Grid (Matching Image 2 Card 1) -->
   <div class="metadata-grid">
     <!-- Client / Company Name -->
     <div class="meta-card">
-      <div class="meta-icon-circle">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><line x1="8" y1="6" x2="8.01" y2="6"/><line x1="16" y1="6" x2="16.01" y2="6"/><line x1="8" y1="10" x2="8.01" y2="10"/><line x1="16" y1="10" x2="16.01" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/></svg>
+      <div class="meta-icon-circle" style="background:#FEE2E2;color:#B5182E;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
       <div class="meta-field-body">
         <label class="meta-label">Client / Company Name <span style="color:#EF4444;">*</span></label>
@@ -898,19 +1558,19 @@ include __DIR__ . '/../includes/header.php';
 
     <!-- Subject / Project Title -->
     <div class="meta-card">
-      <div class="meta-icon-circle">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <div class="meta-icon-circle" style="background:#E0F2FE;color:#0284C7;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
       </div>
       <div class="meta-field-body">
-        <label class="meta-label">Subject / Project Title</label>
-        <input type="text" id="inpSubject" class="meta-input" placeholder="e.g. Commercial Interior Decoration Work" oninput="markDirty()">
+        <label class="meta-label">Subject / Project Title <span style="color:#EF4444;">*</span></label>
+        <input type="text" id="inpSubject" class="meta-input" placeholder="e.g. Commercial Interior..." oninput="markDirty()">
       </div>
     </div>
 
     <!-- Site Location / Address -->
     <div class="meta-card">
-      <div class="meta-icon-circle">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <div class="meta-icon-circle" style="background:#F1F5F9;color:#475569;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
       </div>
       <div class="meta-field-body">
         <label class="meta-label">Site Location / Address</label>
@@ -920,8 +1580,8 @@ include __DIR__ . '/../includes/header.php';
 
     <!-- Status -->
     <div class="meta-card">
-      <div class="meta-icon-circle">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <div class="meta-icon-circle" style="background:#F1F5F9;color:#475569;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
       </div>
       <div class="meta-field-body">
         <label class="meta-label">Status</label>
@@ -967,11 +1627,33 @@ include __DIR__ . '/../includes/header.php';
     <!-- Rendered dynamically by JavaScript -->
   </div>
 
-  <!-- 4. Add Section by Category Container (Dynamic Category Chips + Custom Input) -->
+  <!-- 3b. Add Section by Direct Category Dropdown (Card 3 in Image 2) -->
+  <div class="add-section-dropdown-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">📁</span>
+        <span style="font-weight:800;font-size:13.5px;color:#0F172A;">
+          সেকশন যুক্ত করুন:
+        </span>
+      </div>
+      <button type="button" class="btn-sparkle-new-cat" onclick="openCreateCategoryModalInsideBuilder(-1)">
+        ✨ নতুন ক্যাটাগরি তৈরি করুন (New Category)
+      </button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <select id="selQuickAddCategory" class="sec-cat-select" style="min-width:200px;"></select>
+      <button type="button" class="btn-add-section-pill" onclick="addSectionFromQuickBar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Add Section (+ সেকশন যোগ করুন)
+      </button>
+    </div>
+  </div>
+
+  <!-- 4. Add Section by Category Container (Card 4 in Image 2: Chips + Custom Input) -->
   <div class="add-section-panel">
     <div class="add-section-panel-header">
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:17px;">📁</span>
+        <span style="font-size:17px;color:#F59E0B;font-weight:900;">✚</span>
         <span style="font-weight:800;font-size:14px;color:#0F172A;">
           Add New Section by Category (ক্যাটাগরি অনুযায়ী সেকশন যুক্ত করুন):
         </span>
@@ -996,30 +1678,37 @@ include __DIR__ . '/../includes/header.php';
     </div>
   </div>
 
-  <!-- Signatories & Authority Details Card -->
-  <div class="meta-card" style="margin-bottom: 28px; padding: 18px 20px; display: block; border-left: 4px solid #B5182E;">
-    <div style="font-size: 13.5px; font-weight: 800; color: #0F172A; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+  <!-- Card 5: Signatories & Authority Details Card (Matching Image 2) -->
+  <div class="signatories-card-wrap">
+    <div class="signatories-card-header">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5182E" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Signatories &amp; Authority Details (স্বাক্ষর ও অনুমোদনকারী বিবরণী)
+      <span>Signatories &amp; Authority Details (স্বাক্ষর ও অনুমোদনকারী বিবরণী)</span>
     </div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
-      <div>
-        <label class="meta-label">Prepared By (Name / প্রস্তুতকারক)</label>
-        <input type="text" id="inpPreparedBy" class="meta-input" placeholder="e.g. Md. Rukonuzzaman" oninput="markDirty()">
+    <div class="signatories-grid">
+      <div class="signatory-field-box">
+        <label class="signatory-label">Prepared By (Name / প্রস্তুতকারক)</label>
+        <input type="text" id="inpPreparedBy" class="signatory-input" placeholder="e.g. Md. Rukonuzzaman" oninput="markDirty()">
       </div>
-      <div>
-        <label class="meta-label">Prepared By (Designation / পদবী)</label>
-        <input type="text" id="inpPreparedByDesig" class="meta-input" placeholder="e.g. Interior Designer" oninput="markDirty()">
+      <div class="signatory-field-box">
+        <label class="signatory-label">Prepared By (Designation / পদবী)</label>
+        <input type="text" id="inpPreparedByDesig" class="signatory-input" placeholder="e.g. Interior Designer" oninput="markDirty()">
       </div>
-      <div>
-        <label class="meta-label">Authorized By (Name / অনুমোদনকারী)</label>
-        <input type="text" id="inpApprovedBy" class="meta-input" placeholder="e.g. Md. Mustafizur Rahman" oninput="markDirty()">
+      <div class="signatory-field-box">
+        <label class="signatory-label">Authorized By (Name / অনুমোদনকারী)</label>
+        <input type="text" id="inpApprovedBy" class="signatory-input" placeholder="e.g. Md. Mustafizur Rahman" oninput="markDirty()">
       </div>
-      <div>
-        <label class="meta-label">Authorized By (Designation / পদবী)</label>
-        <input type="text" id="inpApprovedByDesig" class="meta-input" placeholder="e.g. Managing Director" oninput="markDirty()">
+      <div class="signatory-field-box">
+        <label class="signatory-label">Authorized By (Designation / পদবী)</label>
+        <input type="text" id="inpApprovedByDesig" class="signatory-input" placeholder="e.g. Managing Director" oninput="markDirty()">
       </div>
     </div>
+  </div>
+
+  <!-- Mobile Sticky Bottom Save Button (Matching Image 2) -->
+  <div class="builder-mobile-sticky-bottom" id="builderMobileStickyBottom">
+    <button type="button" class="btn-mobile-save-estimate" onclick="saveEstimateData(false)">
+      💾 Save Estimate ➔
+    </button>
   </div>
 </div>
 
@@ -1619,6 +2308,14 @@ function renderAllSections() {
             '<button type="button" class="sec-new-cat-btn" onclick="openCreateCategoryModalInsideBuilder(' + sIdx + ')" title="Add new custom category">' +
               '+ New Cat' +
             '</button>' +
+            '<div class="action-menu-wrap sec-mobile-menu">' +
+              '<button type="button" class="btn-dots" onclick="toggleActionMenu(event, \'sec_' + sIdx + '\')" title="Section Options">⋮</button>' +
+              '<div class="action-dropdown" id="actionMenu_sec_' + sIdx + '">' +
+                (sIdx > 0 ? '<button type="button" onclick="moveSectionUp(event, ' + sIdx + ')">▲ Move Section Up</button>' : '') +
+                (sIdx < estimateData.sections.length - 1 ? '<button type="button" onclick="moveSectionDown(event, ' + sIdx + ')">▼ Move Section Down</button>' : '') +
+                '<button type="button" onclick="removeSection(' + sIdx + ')" style="color:#EF4444;">🗑️ Delete Section</button>' +
+              '</div>' +
+            '</div>' +
             (isActive 
               ? '<span class="sec-active-indicator" style="background:#FEE2E2;color:#B5182E;font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;display:inline-flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:#B5182E;animation:pulse 1.5s infinite;"></span> Active Section (কাজ চলমান)</span>' 
               : '<button type="button" onclick="setActiveSection(' + sIdx + ')" style="background:#F1F5F9;border:1px solid #CBD5E1;color:#475569;font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">🔍 Click to Edit (ক্লিক করে বড় করুন)</button>'
@@ -2127,11 +2824,43 @@ function escAttr(str) {
     .replace(/"/g, '&quot;');
 }
 
+function toggleActionMenu(e, id) {
+  e.stopPropagation();
+  var all = document.querySelectorAll('.action-dropdown');
+  var target = document.getElementById('actionMenu_' + id);
+  if (!target) return;
+  var isOpen = target.classList.contains('show');
+  all.forEach(function(d) { d.classList.remove('show'); });
+  if (!isOpen) {
+    target.classList.add('show');
+  }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.action-dropdown') && !e.target.closest('.btn-dots')) {
+    document.querySelectorAll('.action-dropdown').forEach(function(d) { d.classList.remove('show'); });
+  }
+});
+
+function ensureMobileStickySaveFixed() {
+  if (window.innerWidth <= 768) {
+    var sb = document.getElementById('builderMobileStickyBottom');
+    if (sb && sb.parentElement !== document.body) {
+      document.body.appendChild(sb);
+    }
+  }
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initBuilder);
+  document.addEventListener('DOMContentLoaded', function() {
+    ensureMobileStickySaveFixed();
+    initBuilder();
+  });
 } else {
+  ensureMobileStickySaveFixed();
   initBuilder();
 }
+window.addEventListener('resize', ensureMobileStickySaveFixed);
 </script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>

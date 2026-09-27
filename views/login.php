@@ -11,10 +11,17 @@ $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTT
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $u = trim($_POST['username'] ?? '');
     $p = $_POST['password'] ?? '';
-    $stmt = $pdo->prepare("SELECT id,username,password_hash,role,photo FROM app_users WHERE username=? AND is_active=1");
-    $stmt->execute([$u]);
+    $stmt = $pdo->prepare("SELECT id,username,password_hash,role,photo,is_active,is_deleted FROM app_users WHERE (LOWER(username)=LOWER(?) OR LOWER(email)=LOWER(?)) AND is_deleted=0");
+    $stmt->execute([$u, $u]);
     $user = $stmt->fetch();
-    if ($user && password_verify($p, $user['password_hash'])) {
+    if ($user && intval($user['is_active']) === 0) {
+        $error = 'Your account has been deactivated. Please contact the administrator.';
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => $error]);
+            exit;
+        }
+    } elseif ($user && password_verify($p, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];

@@ -221,16 +221,22 @@ if ($action === 'get_dashboard_stats' && $method === 'GET') {
                 total as amount, purchase_date as tx_date, created_at
          FROM app_supply_purchases WHERE is_deleted=0)
         UNION ALL
-        (SELECT 'contractor_payment', id, CONCAT('Payment - Advance') as title, project_id,
-                amount, payment_date, created_at
-         FROM app_contractor_advances WHERE is_deleted=0)
+        (SELECT 'contractor_payment' as type, ca.id,
+                COALESCE(NULLIF(c.name, ''), NULLIF(ca.who_received, ''), 'Contractor Payment') as title,
+                ca.project_id, ca.amount, ca.payment_date as tx_date, ca.created_at
+         FROM app_contractor_advances ca
+         LEFT JOIN app_contractors c ON ca.contractor_id = c.id
+         WHERE ca.is_deleted=0)
         UNION ALL
-        (SELECT 'labor_payment', id, CONCAT('Labor Payment') as title, project_id,
-                amount, payment_date, created_at
-         FROM app_worker_payments WHERE is_deleted=0)
+        (SELECT 'labor_payment' as type, wp.id,
+                COALESCE(NULLIF(w.name, ''), NULLIF(wp.who_received, ''), 'Labor Payment') as title,
+                wp.project_id, wp.amount, wp.payment_date as tx_date, wp.created_at
+         FROM app_worker_payments wp
+         LEFT JOIN app_workers w ON wp.worker_id = w.id
+         WHERE wp.is_deleted=0)
         UNION ALL
-        (SELECT 'client_payment', id, CONCAT('Client Payment') as title, project_id,
-                amount, payment_date, created_at
+        (SELECT 'client_payment' as type, id, CONCAT('Client Payment') as title, project_id,
+                amount, payment_date as tx_date, created_at
          FROM app_client_payments WHERE is_deleted=0)
         ORDER BY tx_date DESC, created_at DESC LIMIT 10";
         $recent_txns = $pdo->query($txnSQL)->fetchAll(PDO::FETCH_ASSOC);
@@ -292,6 +298,92 @@ if ($action === 'get_dashboard_stats' && $method === 'GET') {
     exit;
 }
 
+// --- ALL RECENT ACTIVITY (Today & Past Days) ---
+if ($action === 'get_all_recent_activity') {
+    requireLogin();
+    $days = intval($_GET['days'] ?? 30);
+    if ($days <= 0 || $days > 90) $days = 30;
+    
+    $sinceDate = date('Y-m-d', strtotime("-$days days"));
+    
+    $allTxnSQL = "
+    (SELECT 'purchase' as type, id, item_name as title, project_id,
+            total as amount, purchase_date as tx_date, created_at
+     FROM app_supply_purchases WHERE is_deleted=0 AND purchase_date >= :since1)
+    UNION ALL
+    (SELECT 'contractor_payment' as type, ca.id,
+            COALESCE(NULLIF(c.name, ''), NULLIF(ca.who_received, ''), 'Contractor Payment') as title,
+            ca.project_id, ca.amount, ca.payment_date as tx_date, ca.created_at
+     FROM app_contractor_advances ca
+     LEFT JOIN app_contractors c ON ca.contractor_id = c.id
+     WHERE ca.is_deleted=0 AND ca.payment_date >= :since2)
+    UNION ALL
+    (SELECT 'labor_payment' as type, wp.id,
+            COALESCE(NULLIF(w.name, ''), NULLIF(wp.who_received, ''), 'Labor Payment') as title,
+            wp.project_id, wp.amount, wp.payment_date as tx_date, wp.created_at
+     FROM app_worker_payments wp
+     LEFT JOIN app_workers w ON wp.worker_id = w.id
+     WHERE wp.is_deleted=0 AND wp.payment_date >= :since3)
+    UNION ALL
+    (SELECT 'client_payment' as type, id, CONCAT('Client Payment') as title,
+            project_id, amount, payment_date as tx_date, created_at
+     FROM app_client_payments WHERE is_deleted=0 AND payment_date >= :since4)
+    ORDER BY tx_date DESC, created_at DESC LIMIT 200";
+    
+    $stmt = $pdo->prepare($allTxnSQL);
+    $stmt->execute([
+        ':since1' => $sinceDate,
+        ':since2' => $sinceDate,
+        ':since3' => $sinceDate,
+        ':since4' => $sinceDate,
+    ]);
+    $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // If few activities in date window, load most recent 60 across all time
+    if (count($activities) < 10) {
+        $fallbackSQL = "
+        (SELECT 'purchase' as type, id, item_name as title, project_id,
+                total as amount, purchase_date as tx_date, created_at
+         FROM app_supply_purchases WHERE is_deleted=0)
+        UNION ALL
+        (SELECT 'contractor_payment' as type, ca.id,
+                COALESCE(NULLIF(c.name, ''), NULLIF(ca.who_received, ''), 'Contractor Payment') as title,
+                ca.project_id, ca.amount, ca.payment_date as tx_date, ca.created_at
+         FROM app_contractor_advances ca
+         LEFT JOIN app_contractors c ON ca.contractor_id = c.id
+         WHERE ca.is_deleted=0)
+        UNION ALL
+        (SELECT 'labor_payment' as type, wp.id,
+                COALESCE(NULLIF(w.name, ''), NULLIF(wp.who_received, ''), 'Labor Payment') as title,
+                wp.project_id, wp.amount, wp.payment_date as tx_date, wp.created_at
+         FROM app_worker_payments wp
+         LEFT JOIN app_workers w ON wp.worker_id = w.id
+         WHERE wp.is_deleted=0)
+        UNION ALL
+        (SELECT 'client_payment' as type, id, CONCAT('Client Payment') as title, project_id,
+                amount, payment_date as tx_date, created_at
+         FROM app_client_payments WHERE is_deleted=0)
+        ORDER BY tx_date DESC, created_at DESC LIMIT 60";
+        $activities = $pdo->query($fallbackSQL)->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    // Attach project names
+    $projCache = [];
+    foreach ($activities as &$tx) {
+        $pid = $tx['project_id'];
+        if ($pid && !isset($projCache[$pid])) {
+            $pStmt = $pdo->prepare("SELECT name FROM app_projects WHERE id=?");
+            $pStmt->execute([$pid]);
+            $projCache[$pid] = $pStmt->fetchColumn() ?: '';
+        }
+        $tx['project_name'] = $projCache[$pid] ?? '';
+    }
+    unset($tx);
+    
+    echo json_encode(['success' => true, 'data' => $activities, 'since' => $sinceDate]);
+    exit;
+}
+
 // --- SETTINGS ACTIONS ---
 if ($action === 'save_settings') {
     requireLogin();
@@ -305,8 +397,116 @@ if ($action === 'save_settings') {
     }
     echo json_encode(['success'=>true,'message'=>'Settings saved.']); exit;
 }
+
+/**
+ * Compress user photo/avatar to a lightweight size (~20-40KB)
+ * Scales down to maxDim (e.g. 320px) and compresses with 80% quality.
+ */
+function compressAndSaveUserPhoto($tmpPath, $targetPath, $maxDim = 320, $quality = 80) {
+    $dir = dirname($targetPath);
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+
+    if (!extension_loaded('gd') || !file_exists($tmpPath)) {
+        return move_uploaded_file($tmpPath, $targetPath) || copy($tmpPath, $targetPath);
+    }
+
+    $imgInfo = @getimagesize($tmpPath);
+    if (!$imgInfo) {
+        return move_uploaded_file($tmpPath, $targetPath) || copy($tmpPath, $targetPath);
+    }
+
+    $mime = $imgInfo['mime'] ?? '';
+    $srcImg = null;
+    switch ($mime) {
+        case 'image/jpeg':
+            $srcImg = @imagecreatefromjpeg($tmpPath);
+            if ($srcImg && function_exists('exif_read_data')) {
+                $exif = @exif_read_data($tmpPath);
+                if ($exif && !empty($exif['Orientation'])) {
+                    switch ($exif['Orientation']) {
+                        case 3: $srcImg = imagerotate($srcImg, 180, 0); break;
+                        case 6: $srcImg = imagerotate($srcImg, -90, 0); break;
+                        case 8: $srcImg = imagerotate($srcImg, 90, 0); break;
+                    }
+                }
+            }
+            break;
+        case 'image/png':
+            $srcImg = @imagecreatefrompng($tmpPath);
+            break;
+        case 'image/webp':
+            $srcImg = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($tmpPath) : null;
+            break;
+        case 'image/gif':
+            $srcImg = @imagecreatefromgif($tmpPath);
+            break;
+    }
+
+    if (!$srcImg) {
+        return move_uploaded_file($tmpPath, $targetPath) || copy($tmpPath, $targetPath);
+    }
+
+    $origW = imagesx($srcImg);
+    $origH = imagesy($srcImg);
+
+    $scale = min(1.0, (float)$maxDim / (float)max($origW, $origH));
+    $dstW = max(1, (int)round($origW * $scale));
+    $dstH = max(1, (int)round($origH * $scale));
+
+    $dstImg = imagecreatetruecolor($dstW, $dstH);
+
+    if ($mime === 'image/png' || $mime === 'image/webp') {
+        imagealphablending($dstImg, false);
+        imagesavealpha($dstImg, true);
+        $transparent = imagecolorallocatealpha($dstImg, 255, 255, 255, 127);
+        imagefilledrectangle($dstImg, 0, 0, $dstW, $dstH, $transparent);
+    } else {
+        $bg = imagecolorallocate($dstImg, 255, 255, 255);
+        imagefilledrectangle($dstImg, 0, 0, $dstW, $dstH, $bg);
+    }
+
+    imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $dstW, $dstH, $origW, $origH);
+    imagedestroy($srcImg);
+
+    $ext = strtolower(pathinfo($targetPath, PATHINFO_EXTENSION));
+    $success = false;
+
+    if ($ext === 'png') {
+        $success = imagepng($dstImg, $targetPath, 7);
+    } elseif ($ext === 'webp' && function_exists('imagewebp')) {
+        $success = imagewebp($dstImg, $targetPath, $quality);
+    } else {
+        $success = imagejpeg($dstImg, $targetPath, $quality);
+    }
+
+    imagedestroy($dstImg);
+    return $success;
+}
+
 if ($action === 'create_user') {
     requireLogin();
+
+    // Strict Owner check
+    $currentRole = strtolower($_SESSION['role'] ?? '');
+    if ($currentRole !== 'owner' && $currentRole !== 'admin') {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: Only users with the Owner role can create new users.']);
+        exit;
+    }
+
+    // Owner password verification
+    $ownerPass = $_POST['owner_password'] ?? '';
+    if (empty($ownerPass)) {
+        echo json_encode(['success' => false, 'message' => 'Owner password confirmation is required.']);
+        exit;
+    }
+    $stmtOwner = $pdo->prepare("SELECT password_hash FROM app_users WHERE id = ?");
+    $stmtOwner->execute([$_SESSION['user_id']]);
+    $ownerHash = $stmtOwner->fetchColumn();
+    if (!$ownerHash || !password_verify($ownerPass, $ownerHash)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid Owner password confirmation.']);
+        exit;
+    }
+
     $username = trim($_POST['username'] ?? '');
     $email    = trim($_POST['email'] ?? ($username . '@lilyinteriorsbd.com'));
     $password = $_POST['password'] ?? '';
@@ -323,7 +523,7 @@ if ($action === 'create_user') {
     $dup = $pdo->prepare("SELECT id FROM app_users WHERE username=? OR email=?"); $dup->execute([$username, $email]);
     if ($dup->fetch()) { echo json_encode(['success'=>false,'message'=>'Username or email already exists.']); exit; }
     
-    // Photo upload handling
+    // Photo upload handling with compression
     $photoPath = null;
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
         $file = $_FILES['photo'];
@@ -336,7 +536,8 @@ if ($action === 'create_user') {
             if (!is_dir($dir)) mkdir($dir, 0755, true);
             $ext = $mime_map[$mime];
             $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            if (move_uploaded_file($file['tmp_name'], $dir . $filename)) {
+            $target = $dir . $filename;
+            if (compressAndSaveUserPhoto($file['tmp_name'], $target, 320, 80)) {
                 $photoPath = 'uploads/users/' . $filename;
             }
         }
@@ -344,15 +545,39 @@ if ($action === 'create_user') {
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
     $pdo->prepare("INSERT INTO app_users (username,email,password_hash,role,photo,is_active,is_deleted,created_at) VALUES (?,?,?,?,?,1,0,NOW())")->execute([$username,$email,$hash,$role,$photoPath]);
-    echo json_encode(['success'=>true,'message'=>'User created.']); exit;
+    echo json_encode(['success'=>true,'message'=>'User created successfully.']); exit;
 }
 if ($action === 'delete_user') {
     requireLogin();
-    if (!isset($_SESSION['admin_auth_time']) || (time() - $_SESSION['admin_auth_time'] > 300)) {
-        echo json_encode(['success' => false, 'message' => 'Unauthorized - Password verification required.']);
+    
+    // Strict Owner check
+    $currentRole = strtolower($_SESSION['role'] ?? '');
+    if ($currentRole !== 'owner' && $currentRole !== 'admin') {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: Only users with the Owner role can remove users.']);
         exit;
     }
+
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
+    $ownerPass = $data['owner_password'] ?? $_POST['owner_password'] ?? '';
+    
+    // Verify Owner password directly or recent admin_auth_time within 120s
+    $isOwnerVerified = false;
+    if (!empty($ownerPass)) {
+        $stmtOwner = $pdo->prepare("SELECT password_hash FROM app_users WHERE id = ?");
+        $stmtOwner->execute([$_SESSION['user_id']]);
+        $ownerHash = $stmtOwner->fetchColumn();
+        if ($ownerHash && password_verify($ownerPass, $ownerHash)) {
+            $isOwnerVerified = true;
+        }
+    } elseif (isset($_SESSION['admin_auth_time']) && (time() - $_SESSION['admin_auth_time'] <= 120)) {
+        $isOwnerVerified = true;
+    }
+
+    if (!$isOwnerVerified) {
+        echo json_encode(['success' => false, 'message' => 'Owner password confirmation is required.']);
+        exit;
+    }
+
     $id = intval($data['id'] ?? $_POST['id'] ?? 0);
     if (!$id) {
         echo json_encode(['success' => false, 'message' => 'User ID required.']);
@@ -381,6 +606,11 @@ if ($action === 'delete_user') {
 }
 if ($action === 'toggle_user') {
     requireLogin();
+    $currentRole = strtolower($_SESSION['role'] ?? '');
+    if ($currentRole !== 'owner' && $currentRole !== 'admin') {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized: Only users with the Owner role can change user status.']);
+        exit;
+    }
     $data = json_decode(file_get_contents('php://input'),true) ?? [];
     $id = intval($data['id'] ?? $_POST['id'] ?? 0);
     $active = intval($data['is_active'] ?? $_POST['is_active'] ?? 0);
@@ -444,7 +674,7 @@ if ($action === 'upload_avatar') {
     if (!is_dir($dir)) mkdir($dir, 0777, true);
     $filename = 'user_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
     $target = $dir . '/' . $filename;
-    if (move_uploaded_file($file['tmp_name'], $target)) {
+    if (compressAndSaveUserPhoto($file['tmp_name'], $target, 320, 80)) {
         $photoPath = 'uploads/users/' . $filename;
         $userId = $_SESSION['user_id'] ?? 0;
         if ($userId) {

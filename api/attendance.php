@@ -88,7 +88,6 @@ try {
             break;
 
         case 'delete_attendance':
-            if (!verifyAdminAction()) { echo json_encode(['success'=>false,'message'=>'Unauthorized - Admin password required']); exit; }
             $data = json_decode(file_get_contents('php://input'), true) ?? [];
             $id   = intval($data['id'] ?? 0);
             if (!$id) { echo json_encode(['success'=>false,'message'=>'ID required.']); exit; }
@@ -147,7 +146,6 @@ try {
             break;
 
         case 'delete_payment':
-            if (!verifyAdminAction()) { echo json_encode(['success'=>false,'message'=>'Unauthorized - Admin password required']); exit; }
             $data = json_decode(file_get_contents('php://input'), true) ?? [];
             $id   = intval($data['id'] ?? 0);
             if (!$id) { echo json_encode(['success'=>false,'message'=>'ID required.']); exit; }
